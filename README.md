@@ -4,7 +4,7 @@
 This repository contains the project "A boat trip" for the course Computer Graphics at the Johannes Kepler University Linz, Austria.
 
 
-# Porject members
+# Project members
  * Edith Karda
  * Christopher Rumplmayr, k01057863, SKZ: 521
 
