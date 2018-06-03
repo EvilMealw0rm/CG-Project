@@ -13,5 +13,5 @@ This repository contains the project "A boat trip" for the course Computer Graph
  * libs
   * `framework.js` basic utility functions for dealing with WebGL
   * `gl-matrix.js` see http://glmatrix.net/
- * 00_empty
+ * 05_texturing
    basic template for own projects based on this setup
