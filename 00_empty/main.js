@@ -31,6 +31,7 @@ var framebufferHeight = 512;
 //camera and projection settings
 var animatedAngle = 0;
 var legRotationAngle = 0;
+var robotMovement = 0;
 var fieldOfViewInRadians = convertDegreeToRadians(30);
 
 var robotTransformationNode;
@@ -120,8 +121,8 @@ function createRobot(rootNode) {
   pyramidNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
   pyramidNode.specular = [0.628281, 0.555802, 0.366065, 1];
   pyramidNode.shininess = 0.4;
+
   //transformations of whole body
-  //robotTransformationNode = new TransformationSGNode(glm.transform({rotateY: animatedAngle/2, translate: [0.3,0.9,0]}),cubeNode);
   bodyNode = new TransformationSGNode(glm.transform({translate: [0.3,0.8,0]}),pyramidNode);
   robotTransformationNode =new TransformationSGNode(mat4.create(),[bodyNode]);
   rootNode.append(robotTransformationNode);
@@ -136,11 +137,11 @@ function createRobot(rootNode) {
   robotTransformationNode.append(headTransformationNode);
 
   //left leg
-  leftLegTransformationNode = new TransformationSGNode(glm.transform({translate: [0.8,-0.6,0], scale: [0.1,1,0.1]}),cubeNode)
+  leftLegTransformationNode = new TransformationSGNode(glm.transform({translate: [0.5,-0.5,0], scale: [0.1,1,0.1]}),cubeNode)
   robotTransformationNode.append(leftLegTransformationNode, cubeNode);
 
   //right leg
-  rightLegtTransformationNode = new TransformationSGNode(glm.transform({translate: [-0.2,-0.6,0], scale: [0.1,1,0.1]}),cubeNode)
+  rightLegtTransformationNode = new TransformationSGNode(glm.transform({translate: [0,-0.5,0], scale: [0.1,1,0.1]}),cubeNode)
   robotTransformationNode.append(rightLegtTransformationNode);
 
   // right arm
@@ -166,41 +167,31 @@ function render(timeInMilliseconds) {
   //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.useProgram(root.program);
 
-  // //TASK 6-2
-  //update transformation of robot for rotation animation
-  // var robotTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(), glm.rotateY(animatedAngle/2));
-  // robotTransformationMatrix = mat4.multiply(mat4.create(), robotTransformationMatrix, glm.translate(0.3,0.9,0));
+  //update transformation of robot for walking animation
+  robotTransformationNode.matrix = glm.transform({translate: [0,0,robotMovement]})
 
-  //
-  // //update leg transformation to move left leg
-  // var leftLegTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(),glm.rotateX(legRotationAngle));
-  // leftLegTransformationMatrix = mat4.multiply(mat4.create(), leftLegTransformationMatrix, glm.translate(0.16,-0.6,0));
-  // leftLegTransformationMatrix = mat4.multiply(mat4.create(), leftLegTransformationMatrix, glm.scale(0.2,1,0.3));
-  // leftLegTransformationNode.matrix = leftLegTransformationMatrix;
-  //
-  // //update leg transformation to move right leg
-  // var rightLegTransformationMatrix = mat4.multiply(mat4.create(), mat4.create(),glm.rotateX(-legRotationAngle));
-  // rightLegTransformationMatrix = mat4.multiply(mat4.create(), rightLegTransformationMatrix, glm.translate(-0.16,-0.6,0));
-  // rightLegTransformationMatrix = mat4.multiply(mat4.create(), rightLegTransformationMatrix, glm.scale(0.2,1,0.3));
-  // rightLegtTransformationNode.matrix = rightLegTransformationMatrix;
-  //
-  // //simulate walking
-  // if(legRotationAngle == 30)
-  //   legUp = false;
-  // if(legRotationAngle == -30)
-  //   legUp = true;
-  // if(legUp)
-  //   legRotationAngle = legRotationAngle + 0.5;
-  // else
-  //   legRotationAngle = legRotationAngle - 0.5;
+  //update leg transformation to move left leg
+  leftLegTransformationNode.matrix = glm.transform({rotateX: legRotationAngle, translate: [0.5,-0.5,0], scale: [0.1,1,0.1]});
 
-  //context = createSceneGraphContext(gl, root.program);
+  //update leg transformation to move right leg
+  rightLegtTransformationNode.matrix = glm.transform({rotateX:-legRotationAngle, translate: [0,-0.5,0], scale: [0.1,1,0.1]});
+
+  //simulate walking
+  if(legRotationAngle == 30)
+    legUp = false;
+  if(legRotationAngle == -30)
+    legUp = true;
+  if(legUp)
+    legRotationAngle = legRotationAngle + 0.5;
+  else
+    legRotationAngle = legRotationAngle - 0.5;
+
   const context = createSGContext(gl);
   context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
 
   let lookatVec = vec3.add(vec3.create(), cameraPos, cameraFront);
   let lookAtMatrix = mat4.lookAt(mat4.create(), cameraPos, lookatVec, cameraUp);
-  //ReCap: what does this mean?
+  
   context.viewMatrix = lookAtMatrix;
 
   context.timeInMilliseconds = timeInMilliseconds;
@@ -219,16 +210,7 @@ function render(timeInMilliseconds) {
 
   //animate based on elapsed time
   animatedAngle = timeInMilliseconds/10;
-}
-
-function renderCube() {
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeIndexBuffer);
-  gl.drawElements(gl.TRIANGLES, cubeIndices.length, gl.UNSIGNED_SHORT, 0); //LINE_STRIP
-}
-
-function setUpModelViewMatrix(sceneMatrix, viewMatrix) {
-  var modelViewMatrix = mat4.multiply(mat4.create(), viewMatrix, sceneMatrix);
-  gl.uniformMatrix4fv(gl.getUniformLocation(context.shader, 'u_modelView'), false, modelViewMatrix);
+  robotMovement -= 0.01
 }
 
 /**
