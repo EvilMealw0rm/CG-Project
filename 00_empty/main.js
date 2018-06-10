@@ -107,200 +107,6 @@ root.append(grass);
   return root;
 }
 
-function makeCube(width, height, length){
-  width =  1;
-  height = 1;
-  length =  1;
-  var position = [ // vordere Fläche
-    -1.0, -1.0,  1.0,
-     1.0, -1.0,  1.0,
-     1.0,  1.0,  1.0,
-    -1.0,  1.0,  1.0,
-
-    // hintere Fläche
-    -1.0, -1.0, -1.0,
-    -1.0,  1.0, -1.0,
-     1.0,  1.0, -1.0,
-     1.0, -1.0, -1.0,
-
-    // obere Fläche
-    -1.0,  1.0, -1.0,
-    -1.0,  1.0,  1.0,
-     1.0,  1.0,  1.0,
-     1.0,  1.0, -1.0,
-
-    // untere Fläche
-    -1.0, -1.0, -1.0,
-     1.0, -1.0, -1.0,
-     1.0, -1.0,  1.0,
-    -1.0, -1.0,  1.0,
-
-    // rechte Fläche
-     1.0, -1.0, -1.0,
-     1.0,  1.0, -1.0,
-     1.0,  1.0,  1.0,
-     1.0, -1.0,  1.0,
-
-    // linke Fläche
-    -1.0, -1.0, -1.0,
-    -1.0, -1.0,  1.0,
-    -1.0,  1.0,  1.0,
-    -1.0,  1.0, -1.0]
-  var normal = [// left column front
-                    0, 0, 1,
-                    0, 0, 1,
-                    0, 0, 1,
-                    0, 0, 1,
-                    0, 0, 1,
-                    0, 0, 1,
-                    // top rung front
-                    0, 0, 1,
-                    0, 0, 1,
-                    0, 0, 1,
-                    0, 0, 1,
-                    0, 0, 1,
-                    0, 0, 1,
-                    // middle rung front
-                    0, 0, 1,
-                    0, 0, 1,
-                    0, 0, 1,
-                    0, 0, 1,
-                    0, 0, 1,
-                    0, 0, 1,
-                    // left column back
-                    0, 0, -1,
-                    0, 0, -1,
-                    0, 0, -1,
-                    0, 0, -1,
-                    0, 0, -1,
-                    0, 0, -1,
-                    // top rung back
-                    0, 0, -1,
-                    0, 0, -1,
-                    0, 0, -1,
-                    0, 0, -1,
-                    0, 0, -1,
-                    0, 0, -1,
-                    // middle rung back
-                    0, 0, -1,
-                    0, 0, -1,
-                    0, 0, -1,
-                    0, 0, -1,
-                    0, 0, -1,
-                    0, 0, -1,
-                    // top
-                    0, 1, 0,
-                    0, 1, 0,
-                    0, 1, 0,
-                    0, 1, 0,
-                    0, 1, 0,
-                    0, 1, 0,
-                    // top rung right
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    // under top rung
-                    0, -1, 0,
-                    0, -1, 0,
-                    0, -1, 0,
-                    0, -1, 0,
-                    0, -1, 0,
-                    0, -1, 0,
-                    // between top rung and middle
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    // top of middle rung
-                    0, 1, 0,
-                    0, 1, 0,
-                    0, 1, 0,
-                    0, 1, 0,
-                    0, 1, 0,
-                    0, 1, 0,
-                    // right of middle rung
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    // bottom of middle rung.
-                    0, -1, 0,
-                    0, -1, 0,
-                    0, -1, 0,
-                    0, -1, 0,
-                    0, -1, 0,
-                    0, -1, 0,
-                    // right of bottom
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    1, 0, 0,
-                    // bottom
-                    0, -1, 0,
-                    0, -1, 0,
-                    0, -1, 0,
-                    0, -1, 0,
-                    0, -1, 0,
-                    0, -1, 0,
-                    // left side
-                    -1, 0, 0,
-                    -1, 0, 0,
-                    -1, 0, 0,
-                    -1, 0, 0,
-                    -1, 0, 0,
-                    -1, 0, 0];
-  var texture = [// Front
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Back
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Top
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Bottom
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Right
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Left
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,];
-  var index = [0,1,2, 0,2,3,
-              4,5,6, 4,6,7,
-              8,9,10, 8,10,11,
-              12,13,14, 12,14,15,
-              16,17,18, 16,18,19,
-              20,21,22, 20,22,23];
-  return {
-  position: position,
-  normal: normal,
-  texture: texture,
-  index: index
-  };
-}
 
 function createRobot(rootNode) {
   cubeNode = new MaterialNode([new RenderSGNode(makeCube(2,2,2))]);
@@ -308,9 +114,15 @@ function createRobot(rootNode) {
   cubeNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
   cubeNode.specular = [0.628281, 0.555802, 0.366065, 1];
   cubeNode.shininess = 0.4;
+
+  pyramidNode = new MaterialNode([new RenderSGNode(makePyramid())])
+  pyramidNode.ambient = [0.24725, 0.1995, 0.0745, 1];
+  pyramidNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
+  pyramidNode.specular = [0.628281, 0.555802, 0.366065, 1];
+  pyramidNode.shininess = 0.4;
   //transformations of whole body
   //robotTransformationNode = new TransformationSGNode(glm.transform({rotateY: animatedAngle/2, translate: [0.3,0.9,0]}),cubeNode);
-  bodyNode = new TransformationSGNode(glm.transform({translate: [0.3,0.8,0], scale: [0.8, 0.8, 0.8]}),cubeNode);
+  bodyNode = new TransformationSGNode(glm.transform({translate: [0.3,0.8,0]}),pyramidNode);
   robotTransformationNode =new TransformationSGNode(mat4.create(),[bodyNode]);
   rootNode.append(robotTransformationNode);
 
@@ -320,23 +132,23 @@ function createRobot(rootNode) {
   sphereNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
   sphereNode.specular = [0.628281, 0.555802, 0.366065, 1];
   sphereNode.shininess = 0.4;
-  headTransformationNode = (new TransformationSGNode(glm.transform({translate: [0.3, 2, 0], scale: [2, 2, 2]}),sphereNode))
+  headTransformationNode = (new TransformationSGNode(glm.transform({translate: [0.3, 2.2, 0], scale: [2, 2, 2]}),sphereNode))
   robotTransformationNode.append(headTransformationNode);
 
   //left leg
-  leftLegTransformationNode = new TransformationSGNode(glm.transform({translate: [0.8,-0.6,0], scale: [0.1,1,0.3]}),cubeNode)
+  leftLegTransformationNode = new TransformationSGNode(glm.transform({translate: [0.8,-0.6,0], scale: [0.1,1,0.1]}),cubeNode)
   robotTransformationNode.append(leftLegTransformationNode, cubeNode);
 
   //right leg
-  rightLegtTransformationNode = new TransformationSGNode(glm.transform({translate: [-0.2,-0.6,0], scale: [0.1,1,0.3]}),cubeNode)
+  rightLegtTransformationNode = new TransformationSGNode(glm.transform({translate: [-0.2,-0.6,0], scale: [0.1,1,0.1]}),cubeNode)
   robotTransformationNode.append(rightLegtTransformationNode);
 
   // right arm
-  rightArmTransformationNode = new TransformationSGNode(glm.transform({translate: [1.5,1.5,0], scale: [0.6,0.1,0.2]}),cubeNode);
+  rightArmTransformationNode = new TransformationSGNode(glm.transform({translate: [1,1.5,0], scale: [0.6,0.1,0.1]}),cubeNode);
   robotTransformationNode.append(rightArmTransformationNode);
 
   //left arm
-  leftArmTransformationNode = new TransformationSGNode(glm.transform({translate: [-1,1.5,0], scale: [0.6,0.1,0.2]}),cubeNode);
+  leftArmTransformationNode = new TransformationSGNode(glm.transform({translate: [-0.4,1.5,0], scale: [0.6,0.1,0.1]}),cubeNode);
   robotTransformationNode.append(leftArmTransformationNode);
 
 }

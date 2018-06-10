@@ -270,14 +270,20 @@ function initCubeBuffer() {
 }
 
 function createRobot(rootNode) {
-  cubeNode = new MaterialNode([new RenderSGNode(makeCube())]);
+  cubeNode = new MaterialNode([new RenderSGNode(makeCube(2,2,2))]);
   cubeNode.ambient = [0.24725, 0.1995, 0.0745, 1];
   cubeNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
   cubeNode.specular = [0.628281, 0.555802, 0.366065, 1];
   cubeNode.shininess = 0.4;
+
+  pyramidNode = new MaterialNode([new RenderSGNode(makePyramid())])
+  pyramidNode.ambient = [0.24725, 0.1995, 0.0745, 1];
+  pyramidNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
+  pyramidNode.specular = [0.628281, 0.555802, 0.366065, 1];
+  pyramidNode.shininess = 0.4;
   //transformations of whole body
   //robotTransformationNode = new TransformationSGNode(glm.transform({rotateY: animatedAngle/2, translate: [0.3,0.9,0]}),cubeNode);
-  bodyNode = new TransformationSGNode(glm.transform({translate: [0.3,0.8,0], scale: [0.8, 0.8, 0.8]}),cubeNode);
+  bodyNode = new TransformationSGNode(glm.transform({translate: [0.3,0.8,0]}),pyramidNode);
   robotTransformationNode =new TransformationSGNode(mat4.create(),[bodyNode]);
   rootNode.append(robotTransformationNode);
 
@@ -287,24 +293,25 @@ function createRobot(rootNode) {
   sphereNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
   sphereNode.specular = [0.628281, 0.555802, 0.366065, 1];
   sphereNode.shininess = 0.4;
-  headTransformationNode = (new TransformationSGNode(glm.transform({translate: [0.3, 2, 0], scale: [2, 2, 2]}),sphereNode))
+  headTransformationNode = (new TransformationSGNode(glm.transform({translate: [0.3, 2.2, 0], scale: [2, 2, 2]}),sphereNode))
   robotTransformationNode.append(headTransformationNode);
 
   //left leg
-  leftLegTransformationNode = new TransformationSGNode(glm.transform({translate: [0.8,-0.6,0], scale: [0.1,1,0.3]}),cubeNode)
+  leftLegTransformationNode = new TransformationSGNode(glm.transform({translate: [0.8,-0.6,0], scale: [0.1,1,0.1]}),cubeNode)
   robotTransformationNode.append(leftLegTransformationNode, cubeNode);
 
   //right leg
-  rightLegtTransformationNode = new TransformationSGNode(glm.transform({translate: [-0.2,-0.6,0], scale: [0.1,1,0.3]}),cubeNode)
+  rightLegtTransformationNode = new TransformationSGNode(glm.transform({translate: [-0.2,-0.6,0], scale: [0.1,1,0.1]}),cubeNode)
   robotTransformationNode.append(rightLegtTransformationNode);
 
   // right arm
-  rightArmTransformationNode = new TransformationSGNode(glm.transform({translate: [1.5,1.5,0], scale: [0.6,0.1,0.2]}),cubeNode);
+  rightArmTransformationNode = new TransformationSGNode(glm.transform({translate: [1,1.5,0], scale: [0.6,0.1,0.1]}),cubeNode);
   robotTransformationNode.append(rightArmTransformationNode);
 
   //left arm
-  leftArmTransformationNode = new TransformationSGNode(glm.transform({translate: [-1,1.5,0], scale: [0.6,0.1,0.2]}),cubeNode);
+  leftArmTransformationNode = new TransformationSGNode(glm.transform({translate: [-0.4,1.5,0], scale: [0.6,0.1,0.1]}),cubeNode);
   robotTransformationNode.append(leftArmTransformationNode);
+
 
 }
 
