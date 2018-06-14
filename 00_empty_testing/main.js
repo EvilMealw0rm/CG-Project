@@ -20,8 +20,16 @@ var timeSinceLastFrame;
 // constant upvector
 var upvector = vec3.fromValues(0, 1, 0);
 
-//rendering context
+// rendering context
 var context;
+
+// particles
+const particleLife = 2000;
+const maxParticles = 2000;
+
+var particles = [];
+var particleNodes = [];
+var waterParticleNode;
 
 //framebuffer variables
 var renderTargetFramebuffer;
@@ -88,6 +96,9 @@ loadResources({
   fs_phong: 'shader/phong.fs.glsl',
   vs_single: 'shader/empty.vs.glsl',
   fs_single: 'shader/empty.fs.glsl',
+  vs_particle: 'shader/particle.vs.glsl',
+  fs_particle: 'shader/particle.fs.glsl',
+  water_particle: 'models/water_particle.png',
   floortexture: 'models/grasslight.jpg'
 }).then(function (resources /*an object containing our keys with the loaded resources*/) {
   init(resources);
@@ -113,15 +124,15 @@ gl.enable(gl.DEPTH_TEST);
 }
 
 function createSceneGraph(gl,resources){
-const root = new ShaderSGNode(createProgram(gl, resources.vs_phong, resources.fs_phong));
-const grass = new ShaderSGNode(createProgram(gl, resources.vs, resources.fs));
+  const root = new ShaderSGNode(createProgram(gl, resources.vs_phong, resources.fs_phong));
+  const grass = new ShaderSGNode(createProgram(gl, resources.vs, resources.fs));
 
-function createLightSphere() {
-  return new ShaderSGNode(createProgram(gl, resources.vs_single, resources.fs_single), [
-    new RenderSGNode(makeSphere(.2,10,10))
-  ]);
-}
-root.append(grass);
+  function createLightSphere() {
+    return new ShaderSGNode(createProgram(gl, resources.vs_single, resources.fs_single), [
+      new RenderSGNode(makeSphere(.2,10,10))
+    ]);
+  }
+  root.append(grass);
   let floor = new AdvancedTextureSGNode(resources.floortexture,
               new RenderSGNode(makeFloor())
             );
@@ -136,6 +147,10 @@ root.append(grass);
   light.position = [0,3,2];
   light.append(createLightSphere())
   root.append(light);
+
+  waterParticleNode = new TextureSGNode(resources.water_particle);
+  root.append(new TransformationSGNode(glm.translate(0.1, 0.1, 3), new ShaderSGNode(createProgram(gl, resources.vs_particle, resources.fs_particle), waterParticleNode)));
+
   createRobot(root);
   return root;
 }
@@ -180,6 +195,7 @@ function createRobot(rootNode) {
   sphereNode.specular = [0.628281, 0.555802, 0.366065, 1];
   sphereNode.shininess = 0.4;
   headTransformationNode = (new TransformationSGNode(glm.transform({translate: [0.3, 2.2, 0], scale: [2, 2, 2]}),sphereNode))
+
   robotTransformationNode.append(headTransformationNode);
 
   //left leg
@@ -233,12 +249,14 @@ function render(timeInMilliseconds) {
   else
     legRotationAngle = legRotationAngle - 0.5;
 
+  createParticles(timeInMilliseconds);
+
   const context = createSGContext(gl);
   context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
 
   let lookatVec = vec3.add(vec3.create(), cameraPos, cameraFront);
   let lookAtMatrix = mat4.lookAt(mat4.create(), cameraPos, lookatVec, cameraUp);
-  
+
   context.viewMatrix = lookAtMatrix;
 
   context.timeInMilliseconds = timeInMilliseconds;
@@ -356,6 +374,7 @@ class LightNode extends TransformationSGNode {
     super.render(context);
   }
 }
+
 class MaterialNode extends SGNode {
 
   constructor(children) {
@@ -387,6 +406,69 @@ class MaterialNode extends SGNode {
 
     //render children
     super.render(context);
+  }
+}
+
+
+//a scene graph node for setting texture parameters
+class TextureSGNode extends AdvancedTextureSGNode {
+  constructor(image, children) {
+        super(image, children);
+    }
+    render(context) {
+        gl.uniform1i(gl.getUniformLocation(context.shader, 'u_enableTexturing'), 1);
+
+        super.render(context);
+
+        gl.uniform1i(gl.getUniformLocation(context.shader, 'u_enableTexturing'), 0);
+    }
+}
+
+/**
+* Particle node
+*/
+class ParticleNode extends RenderSGNode {
+  constructor(renderer, originTime, position, direction, speed, children) {
+    super(renderer, children);
+    this.originTime = originTime;
+    this.origin = position;
+    this.currentPos = [0, 0, 0];
+    this.direction = direction;
+    this.speed = speed;
+    this.age = 0;
+  }
+
+  update(time) {
+    this.age = time - this.starttime;
+    if (this.age <= particleLife) {
+      // paricle lives on
+      this.currentPos[0] = this.origin[0] + (this.speed * this.age) * this.direction[0];
+      this.currentPos[1] = this.origin[1] + (this.speed * this.age) * this.direction[1];
+      this.currentPos[2] = this.origin[2] + (this.speed * this.age) * this.direction[2];
+    } else {
+      // reset particle
+      this.originTime = time;
+      this.age = 0;
+      this.currentPos[0] = this.origin[0];
+      this.currentPos[1] = this.origin[1];
+      this.currentPos[2] = this.origin[2];
+    }
+  }
+}
+
+function createParticles(timeInMilliseconds) {
+  if (particleNodes.length < maxParticles) {
+    let particle = new ParticleNode(makeSphere(0.01, 5, 5), timeInMilliseconds, [Math.random(), Math.random(), Math.random()], [0, 0, 1], 1);
+    particles.push(particle);
+    var dummy = new TransformationSGNode(mat4.create(), particle);
+    waterParticleNode.append(dummy);
+    particleNodes.push(dummy);
+
+    for (var i = 0; i < particles.length; i++) {
+      var part = particles[i];
+      part.update(timeInMilliseconds);
+      particleNodes[i].matrix = glm.translate(part.currentPos[0], part.currentPos[1], part.currentPos[2]);
+    }
   }
 }
 
