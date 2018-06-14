@@ -5,6 +5,8 @@ var canvasWidth = 1000;
 var canvasHeight = 800;
 var aspectRatio = canvasWidth / canvasHeight;
 
+var prevTime;
+
 // camera values
 var cameraPos = vec3.fromValues(0, 0, 3);
 var cameraFront = vec3.fromValues(0, 0, -1);
@@ -15,7 +17,12 @@ var yaw = -90;
 var speed = 0.2;
 var sensitivity = 0.02;
 
-var timeSinceLastFrame;
+var deltaTime = 0;
+
+// timestamps
+var sceneOne = 10000;
+var sceneTwo = 20000;
+var movieEnd = 30000;
 
 // constant upvector
 var upvector = vec3.fromValues(0, 1, 0);
@@ -31,16 +38,16 @@ var framebufferHeight = 512;
 //camera and projection settings
 var animatedAngle = 0;
 var legRotationAngle = 0;
-var robotMovement = 0;
 var fieldOfViewInRadians = convertDegreeToRadians(30);
 
+// robot variables
+var robotMoving = true;
+var robotMovement = 0;
+var legUp = true;
 var robotTransformationNode;
 var headTransformationNode;
 var leftLegTransformationNode;
 var rightLegtTransformationNode;
-
-//variable used for the leg movement
-var legUp = true;
 
 //textures
 var floorTexture;
@@ -167,31 +174,19 @@ function render(timeInMilliseconds) {
   //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.useProgram(root.program);
 
-  //update transformation of robot for walking animation
-  robotTransformationNode.matrix = glm.transform({translate: [0,0,robotMovement]})
+  deltaTime = timeInMilliseconds - prevTime;
+  prevTime = timeInMilliseconds;
 
-  //update leg transformation to move left leg
-  leftLegTransformationNode.matrix = glm.transform({rotateX: legRotationAngle, translate: [0.5,-0.5,0], scale: [0.1,1,0.1]});
+  setAnimationParameters(timeInMilliseconds);
 
-  //update leg transformation to move right leg
-  rightLegtTransformationNode.matrix = glm.transform({rotateX:-legRotationAngle, translate: [0,-0.5,0], scale: [0.1,1,0.1]});
-
-  //simulate walking
-  if(legRotationAngle == 30)
-    legUp = false;
-  if(legRotationAngle == -30)
-    legUp = true;
-  if(legUp)
-    legRotationAngle = legRotationAngle + 0.5;
-  else
-    legRotationAngle = legRotationAngle - 0.5;
+  moveRobot();
 
   const context = createSGContext(gl);
   context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
 
   let lookatVec = vec3.add(vec3.create(), cameraPos, cameraFront);
   let lookAtMatrix = mat4.lookAt(mat4.create(), cameraPos, lookatVec, cameraUp);
-  
+
   context.viewMatrix = lookAtMatrix;
 
   context.timeInMilliseconds = timeInMilliseconds;
@@ -210,7 +205,51 @@ function render(timeInMilliseconds) {
 
   //animate based on elapsed time
   animatedAngle = timeInMilliseconds/10;
-  robotMovement -= 0.01
+}
+
+function setAnimationParameters(timeInMilliseconds) {
+
+  if (timeInMilliseconds < sceneOne) {
+    robotMoving = true;
+    robotMovement -= deltaTime / sceneOne;
+  } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo) {
+    robotMoving = false;
+    //robotMovement -= 0,05;
+  } else if (timeInMilliseconds >= sceneTwo && timeInMilliseconds < movieEnd) {
+
+  } else if (timeInMilliseconds >= movieEnd) {
+
+  }
+
+}
+
+function moveRobot() {
+  if (robotMoving) {
+    //update transformation of robot for walking animation
+    robotTransformationNode.matrix = glm.transform({translate: [0,0,robotMovement]})
+
+    //update leg transformation to move left leg
+    leftLegTransformationNode.matrix = glm.transform({rotateX: legRotationAngle, translate: [0.5,-0.5,0], scale: [0.1,1,0.1]});
+
+    //update leg transformation to move right leg
+    rightLegtTransformationNode.matrix = glm.transform({rotateX:-legRotationAngle, translate: [0,-0.5,0], scale: [0.1,1,0.1]});
+
+    //simulate walking
+    if(legRotationAngle == 30)
+      legUp = false;
+    if(legRotationAngle == -30)
+      legUp = true;
+    if(legUp)
+      legRotationAngle = legRotationAngle + 0.5;
+    else
+      legRotationAngle = legRotationAngle - 0.5;
+
+    //robotMovement -= 0.05
+  }
+}
+
+function moveRobotToPos() {
+
 }
 
 /**
