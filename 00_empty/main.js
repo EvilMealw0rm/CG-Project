@@ -13,7 +13,7 @@ var cameraRight = vec3.fromValues(0, 0, 0);
 var pitch = 0;
 var yaw = -90;
 var speed = 0.2;
-var sensitivity = 0.02;
+var sensitivity = 0.05;
 
 var deltaTime = 0;
 var prevTime = 0;
@@ -58,10 +58,18 @@ var rootnofloor = null;
 loadResources({
   vs: 'shader/texture.vs.glsl',
   fs: 'shader/texture.fs.glsl',
+  vs_env: 'shader/envmap.vs.glsl',
+  fs_env: 'shader/envmap.fs.glsl',
   vs_phong: 'shader/phong.vs.glsl',
   fs_phong: 'shader/phong.fs.glsl',
   vs_single: 'shader/empty.vs.glsl',
   fs_single: 'shader/empty.fs.glsl',
+  env_pos_x: 'models/skybox/right.jpg',
+  env_neg_x: 'models/skybox/left.jpg',
+  env_pos_y: 'models/skybox/top.jpg',
+  env_neg_y: 'models/skybox/bottom.jpg',
+  env_pos_z: 'models/skybox/front.jpg',
+  env_neg_z: 'models/skybox/back.jpg',
   floortexture: 'models/grasslight.jpg'
 }).then(function (resources /*an object containing our keys with the loaded resources*/) {
   init(resources);
@@ -81,6 +89,8 @@ gl.enable(gl.DEPTH_TEST);
   //set buffers for cube
   //initCubeBuffer();
 
+  initCubeMap(resources);
+
   //create scenegraph
   root = createSceneGraph(gl, resources);
   initInteraction(gl.canvas);
@@ -88,6 +98,16 @@ gl.enable(gl.DEPTH_TEST);
 
 function createSceneGraph(gl,resources){
 const root = new ShaderSGNode(createProgram(gl, resources.vs_phong, resources.fs_phong));
+
+{
+  var skybox = new ShaderSGNode(createProgram(gl, resources.vs_env, resources.fs_env), [
+    new EnvironmentSGNode(envcubetexture, 4, false,
+      new RenderSGNode(makeSphere(60)))
+  ]);
+  root.append(skybox);
+}
+
+
 const grass = new ShaderSGNode(createProgram(gl, resources.vs, resources.fs));
 
 function createLightSphere() {
@@ -114,6 +134,63 @@ root.append(grass);
   return root;
 }
 
+function initCubeMap(resources) {
+  //create the texture
+  envcubetexture = gl.createTexture();
+  //define some texture unit we want to work on
+  gl.activeTexture(gl.TEXTURE0);
+  //bind the texture to the texture unit
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, envcubetexture);
+  //set sampling parameters
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+  //gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_R, gl.MIRRORED_REPEAT); //will be available in WebGL 2
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  //set correct image for each side of the cube map
+  gl.pixelStorei(gl.UNPACK_FLIP_Z_WEBGL, true);//flipping required for our skybox, otherwise images don't fit together
+  gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_pos_x);
+  gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_neg_x);
+  gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_pos_y);
+  gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_neg_y);
+  gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_pos_z);
+  gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_neg_z);
+  //generate mipmaps (optional)
+  gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+  //unbind the texture again
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+}
+
+//a scene graph node for setting environment mapping parameters
+class EnvironmentSGNode extends SGNode {
+
+  constructor(envtexture, textureunit, doReflect , children ) {
+      super(children);
+      this.envtexture = envtexture;
+      this.textureunit = textureunit;
+      this.doReflect = doReflect;
+  }
+
+  render(context)
+  {
+    //set additional shader parameters
+    let invView3x3 = mat3.fromMat4(mat3.create(), context.invViewMatrix); //reduce to 3x3 matrix since we only process direction vectors (ignore translation)
+    gl.uniformMatrix3fv(gl.getUniformLocation(context.shader, 'u_invView'), false, invView3x3);
+    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_texCube'), this.textureunit);
+    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_useReflection'), this.doReflect)
+
+    //activate and bind texture
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.envtexture);
+
+    //render children
+    super.render(context);
+
+    //clean up
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+  }
+}
 
 function createRobot(rootNode) {
   cubeNode = new MaterialNode([new RenderSGNode(makeCube(2,2,2))]);
@@ -190,6 +267,9 @@ function render(timeInMilliseconds) {
 
   context.timeInMilliseconds = timeInMilliseconds;
 
+  //get inverse view matrix to allow to compute viewing direction in world space for environment mapping
+  context.invViewMatrix = mat4.invert(mat4.create(), context.viewMatrix);
+
   //TASK 0-2 rotate whole scene according to the mouse rotation stored in
   //camera.rotation.x and camera.rotation.y
   //context.sceneMatrix = mat4.create();
@@ -264,7 +344,7 @@ function moveRobotToPos() {
 function createSceneGraphContext(gl, shader) {
 
   //create a default projection matrix
-  projectionMatrix = mat4.perspective(mat4.create(), fieldOfViewInRadians, aspectRatio, 0.01, 10);
+  projectionMatrix = mat4.perspective(mat4.create(), fieldOfViewInRadians, aspectRatio, 0.01, 100);
   //set projection matrix
   gl.uniformMatrix4fv(gl.getUniformLocation(shader, 'u_projection'), false, projectionMatrix);
 
@@ -279,8 +359,8 @@ function createSceneGraphContext(gl, shader) {
 
 function calculateViewMatrix() {
   //compute the camera's matrix
-  var eye = [0,3,5];
-  var center = [0,0,0];
+  var eye = cameraFront;
+  var center = cameraPos;
   var up = [0,1,0];
   viewMatrix = mat4.lookAt(mat4.create(), eye, center, up);
   return viewMatrix;
