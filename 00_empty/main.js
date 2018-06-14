@@ -5,8 +5,6 @@ var canvasWidth = 1000;
 var canvasHeight = 800;
 var aspectRatio = canvasWidth / canvasHeight;
 
-var prevTime;
-
 // camera values
 var cameraPos = vec3.fromValues(0, 0, 3);
 var cameraFront = vec3.fromValues(0, 0, -1);
@@ -18,6 +16,7 @@ var speed = 0.2;
 var sensitivity = 0.02;
 
 var deltaTime = 0;
+var prevTime = 0;
 
 // timestamps
 var sceneOne = 10000;
@@ -177,7 +176,7 @@ function render(timeInMilliseconds) {
   deltaTime = timeInMilliseconds - prevTime;
   prevTime = timeInMilliseconds;
 
-  setAnimationParameters(timeInMilliseconds);
+  setAnimationParameters(timeInMilliseconds, deltaTime);
 
   moveRobot();
 
@@ -209,16 +208,20 @@ function render(timeInMilliseconds) {
 
 function setAnimationParameters(timeInMilliseconds) {
 
+  var delta = timeInMilliseconds - prevTime;
+  prevTime = timeInMilliseconds;
+
   if (timeInMilliseconds < sceneOne) {
     robotMoving = true;
-    robotMovement -= deltaTime / sceneOne;
+    robotMovement -= 0.05;
   } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo) {
     robotMoving = false;
     //robotMovement -= 0,05;
   } else if (timeInMilliseconds >= sceneTwo && timeInMilliseconds < movieEnd) {
-
+    robotMoving = true;
+    robotMovement += 0.05;
   } else if (timeInMilliseconds >= movieEnd) {
-
+    robotMoving = false;
   }
 
 }
