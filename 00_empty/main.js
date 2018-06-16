@@ -100,6 +100,7 @@ loadResources({
   env_pos_z: 'models/skybox/front.jpg',
   env_neg_z: 'models/skybox/back.jpg',
   floortexture: 'models/grasslight.jpg',
+  water_texture: 'models/water_texture.jpg',
   boat_texture: 'models/boattex.jpg',
   boat: 'models/OldBoat.obj'
 }).then(function (resources /*an object containing our keys with the loaded resources*/) {
@@ -148,10 +149,15 @@ root.append(grass);
   let floor = new AdvancedTextureSGNode(resources.floortexture,
               new RenderSGNode(makeFloor())
             );
-  floor.textureunit = 2;
-  grass.append(new TransformationSGNode(glm.transform({ translate: [0,-1.5,0], rotateX: -90, scale: 3}), [
+
+  grass.append(new TransformationSGNode(glm.transform({ translate: [0,-1.5,0], rotateX: -90, scale: [5,3,3]}), [
     floor
   ]));
+
+  let water = new AdvancedTextureSGNode(resources.water_texture,
+              new RenderSGNode(makeFloor()))
+  grass.append(new TransformationSGNode(glm.transform({translate: [0,-1.5,80], rotateX: -90, scale: [5,5,7]}),
+      [water]));
 
   let light = new LightNode();
   light.ambient = [0,0,0,1];
@@ -161,10 +167,10 @@ root.append(grass);
   light.append(createLightSphere())
   root.append(light);
 
-  let boatNode = new AdvancedTextureSGNode(resources.boat_texture,
-                 new TransformationSGNode(glm.transform({translate: [3,-1,0],scale: [0.3,0.3,0.3]}),
+  let boat = new AdvancedTextureSGNode(resources.boat_texture,
+                 new TransformationSGNode(glm.transform({translate: [1,-1.5,37],scale: [0.3,0.3,0.3]}),
                  new RenderSGNode(resources.boat)));
-  grass.append(boatNode);
+  grass.append(boat);
 
   createRobot(root, resources);
 
