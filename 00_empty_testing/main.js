@@ -99,7 +99,9 @@ loadResources({
   vs_particle: 'shader/particle.vs.glsl',
   fs_particle: 'shader/particle.fs.glsl',
   water_particle: 'models/water_particle.png',
-  floortexture: 'models/grasslight.jpg'
+  floortexture: 'models/grasslight.jpg',
+  boat_texture: 'models/boattex.jpg',
+  boat: 'models/OldBoat.obj'
 }).then(function (resources /*an object containing our keys with the loaded resources*/) {
   init(resources);
 
@@ -136,7 +138,7 @@ function createSceneGraph(gl,resources){
   let floor = new AdvancedTextureSGNode(resources.floortexture,
               new RenderSGNode(makeFloor())
             );
-  floor.textureunit = 2;
+
   grass.append(new TransformationSGNode(glm.transform({ translate: [0,-1.5,0], rotateX: -90, scale: 3}), [
     floor
   ]));
@@ -148,6 +150,9 @@ function createSceneGraph(gl,resources){
   light.append(createLightSphere())
   root.append(light);
 
+  let boatNode = new AdvancedTextureSGNode(resources.boat_texture,new TransformationSGNode(
+    glm.transform({translate: [3,-1,0],scale: [0.3,0.3,0.3]}),new RenderSGNode(resources.boat)));
+  grass.append(boatNode);
   createRobot(root, resources);
   return root;
 }

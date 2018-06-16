@@ -99,7 +99,9 @@ loadResources({
   env_neg_y: 'models/skybox/bottom.jpg',
   env_pos_z: 'models/skybox/front.jpg',
   env_neg_z: 'models/skybox/back.jpg',
-  floortexture: 'models/grasslight.jpg'
+  floortexture: 'models/grasslight.jpg',
+  boat_texture: 'models/boattex.jpg',
+  boat: 'models/OldBoat.obj'
 }).then(function (resources /*an object containing our keys with the loaded resources*/) {
   init(resources);
 
@@ -115,8 +117,6 @@ function init(resources) {
   gl = createContext(canvasWidth, canvasHeight);
 
 gl.enable(gl.DEPTH_TEST);
-  //set buffers for cube
-  //initCubeBuffer();
 
   initCubeMap(resources);
 
@@ -160,7 +160,14 @@ root.append(grass);
   light.position = [0,3,2];
   light.append(createLightSphere())
   root.append(light);
+
+  let boatNode = new AdvancedTextureSGNode(resources.boat_texture,
+                 new TransformationSGNode(glm.transform({translate: [3,-1,0],scale: [0.3,0.3,0.3]}),
+                 new RenderSGNode(resources.boat)));
+  grass.append(boatNode);
+
   createRobot(root, resources);
+
   return root;
 }
 
@@ -230,10 +237,11 @@ function createRobot(rootNode, resources) {
   cubeNode.shininess = 0.4;
 
   pyramidNode = new MaterialNode([new RenderSGNode(makePyramid())]);
-  pyramidNode.ambient = [0.24725, 0.1995, 0.0745, 1];
-  pyramidNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
-  pyramidNode.specular = [0.628281, 0.555802, 0.366065, 1];
-  pyramidNode.shininess = 0.4;
+  //turquoise
+  pyramidNode.ambient = [0.1,	0.18725,	0.1745, 1];
+  pyramidNode.diffuse = [0.396,	0.74151,	0.69102, 1];
+  pyramidNode.specular = [0.297254,	0.30829,	0.306678, 1];
+  pyramidNode.shininess = 0.1;
 
   //transformations of whole body
   bodyNode = new TransformationSGNode(glm.transform({translate: [0.3,0.8,0]}),pyramidNode);
