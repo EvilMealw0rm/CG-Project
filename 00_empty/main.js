@@ -29,6 +29,13 @@ var upvector = vec3.fromValues(0, 1, 0);
 //rendering context
 var context;
 
+// particles
+const particleLife = 1000;
+const maxParticles = 4000;
+var particles = [];
+var particleNodes = [];
+var waterParticleNode;
+
 //framebuffer variables
 var renderTargetFramebuffer;
 var framebufferWidth = 512;
@@ -64,6 +71,9 @@ loadResources({
   fs_phong: 'shader/phong.fs.glsl',
   vs_single: 'shader/empty.vs.glsl',
   fs_single: 'shader/empty.fs.glsl',
+  vs_particle: 'shader/particle.vs.glsl',
+  fs_particle: 'shader/particle.fs.glsl',
+  water_particle: 'models/water_particle.png',
   env_pos_x: 'models/skybox/right.jpg',
   env_neg_x: 'models/skybox/left.jpg',
   env_pos_y: 'models/skybox/top.jpg',
@@ -130,7 +140,7 @@ root.append(grass);
   light.position = [0,3,2];
   light.append(createLightSphere())
   root.append(light);
-  createRobot(root);
+  createRobot(root, resources);
   return root;
 }
 
@@ -192,14 +202,14 @@ class EnvironmentSGNode extends SGNode {
   }
 }
 
-function createRobot(rootNode) {
+function createRobot(rootNode, resources) {
   cubeNode = new MaterialNode([new RenderSGNode(makeCube(2,2,2))]);
   cubeNode.ambient = [0.24725, 0.1995, 0.0745, 1];
   cubeNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
   cubeNode.specular = [0.628281, 0.555802, 0.366065, 1];
   cubeNode.shininess = 0.4;
 
-  pyramidNode = new MaterialNode([new RenderSGNode(makePyramid())])
+  pyramidNode = new MaterialNode([new RenderSGNode(makePyramid())]);
   pyramidNode.ambient = [0.24725, 0.1995, 0.0745, 1];
   pyramidNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
   pyramidNode.specular = [0.628281, 0.555802, 0.366065, 1];
@@ -216,15 +226,19 @@ function createRobot(rootNode) {
   sphereNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
   sphereNode.specular = [0.628281, 0.555802, 0.366065, 1];
   sphereNode.shininess = 0.4;
-  headTransformationNode = (new TransformationSGNode(glm.transform({translate: [0.3, 2.2, 0], scale: [2, 2, 2]}),sphereNode))
+  headTransformationNode = (new TransformationSGNode(glm.transform({translate: [0.3, 2.2, 0], scale: [2, 2, 2]}),sphereNode));
+
+  waterParticleNode = new TextureSGNode(resources.water_particle);
+  headTransformationNode.append(new TransformationSGNode(glm.translate(0, 0, 0), new ShaderSGNode(createProgram(gl, resources.vs_particle, resources.fs_particle), waterParticleNode)));
+
   robotTransformationNode.append(headTransformationNode);
 
   //left leg
-  leftLegTransformationNode = new TransformationSGNode(glm.transform({translate: [0.5,-0.5,0], scale: [0.1,1,0.1]}),cubeNode)
+  leftLegTransformationNode = new TransformationSGNode(glm.transform({translate: [0.5,-0.5,0], scale: [0.1,1,0.1]}),cubeNode);
   robotTransformationNode.append(leftLegTransformationNode, cubeNode);
 
   //right leg
-  rightLegtTransformationNode = new TransformationSGNode(glm.transform({translate: [0,-0.5,0], scale: [0.1,1,0.1]}),cubeNode)
+  rightLegtTransformationNode = new TransformationSGNode(glm.transform({translate: [0,-0.5,0], scale: [0.1,1,0.1]}),cubeNode);
   robotTransformationNode.append(rightLegtTransformationNode);
 
   // right arm
@@ -252,6 +266,8 @@ function render(timeInMilliseconds) {
 
   deltaTime = timeInMilliseconds - prevTime;
   prevTime = timeInMilliseconds;
+
+  createParticles(timeInMilliseconds);
 
   setAnimationParameters(timeInMilliseconds, deltaTime);
 
@@ -454,6 +470,84 @@ class MaterialNode extends SGNode {
     super.render(context);
   }
 }
+
+
+//a scene graph node for setting texture parameters
+class TextureSGNode extends AdvancedTextureSGNode {
+  constructor(image, children) {
+        super(image, children);
+    }
+    render(context) {
+        gl.uniform1i(gl.getUniformLocation(context.shader, 'u_enableTexturing'), 1);
+
+        super.render(context);
+
+        gl.uniform1i(gl.getUniformLocation(context.shader, 'u_enableTexturing'), 0);
+    }
+}
+
+/**
+* Particle node
+*/
+class ParticleNode extends RenderSGNode {
+  constructor(renderer, originTime, position, direction, speed, children) {
+    super(renderer, children);
+    this.originTime = originTime;
+    this.origin = position;
+    this.currentPos = [0, 0, 0];
+    this.direction = direction;
+    this.speed = speed;
+    this.age = 0.0;
+  }
+
+  update(time) {
+    this.age = time - this.originTime;
+    // paricle lives on
+    if (this.age < particleLife) {
+      // randomly send them in both x & z direction
+      if ((Math.random() * 10) <= 5) {
+        this.currentPos[0] = this.origin[0] + (this.speed * this.age) * this.direction[0];
+        this.currentPos[1] = this.origin[1] + (this.speed * this.age) * this.direction[1];
+        this.currentPos[2] = this.origin[2] + (this.speed * this.age) * this.direction[2];
+      } else {
+        this.currentPos[0] = this.origin[0] - (this.speed * this.age) * this.direction[0];
+        this.currentPos[1] = this.origin[1] + (this.speed * this.age) * this.direction[1];
+        this.currentPos[2] = this.origin[2] - (this.speed * this.age) * this.direction[2];
+      }
+    // reset particle
+    } else {
+      this.originTime = time;
+      this.age = 0;
+      this.currentPos[0] = this.origin[0];
+      this.currentPos[1] = this.origin[1];
+      this.currentPos[2] = this.origin[2];
+    }
+  }
+}
+
+/**
+* Creates and updates the particles
+*/
+function createParticles(timeInMilliseconds) {
+  if (particleNodes.length < maxParticles) {
+    // create the particle
+    // TODO: adjust parameters accordingly to the final "waterfall"
+    let particle = new ParticleNode(makeSphere(0.01, 20, 20), timeInMilliseconds, [Math.random()*3, Math.random() / 3, 0], [Math.random()/2, Math.random(), Math.random()/2], 0.0005);
+    // append the particle into the particle list
+    particles.push(particle);
+    var dummy = new TransformationSGNode(mat4.create(), particle);
+    // append the particle to the scenegraph node and in the list of nodes
+    waterParticleNode.append(dummy);
+    particleNodes.push(dummy);
+    // iterate the particle list and update every particle
+    for (var i = 0; i < particles.length; i++) {
+      var part = particles[i];
+      part.update(timeInMilliseconds);
+      particleNodes[i].matrix = glm.translate(part.currentPos[0], part.currentPos[1], part.currentPos[2]);
+    }
+  }
+}
+
 
 // control user input
 function initInteraction(canvas) {

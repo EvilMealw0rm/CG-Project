@@ -24,8 +24,8 @@ var upvector = vec3.fromValues(0, 1, 0);
 var context;
 
 // particles
-const particleLife = 2000;
-const maxParticles = 2000;
+const particleLife = 1000;
+const maxParticles = 4000;
 
 var particles = [];
 var particleNodes = [];
@@ -148,10 +148,7 @@ function createSceneGraph(gl,resources){
   light.append(createLightSphere())
   root.append(light);
 
-  waterParticleNode = new TextureSGNode(resources.water_particle);
-  root.append(new TransformationSGNode(glm.translate(0.1, 0.1, 3), new ShaderSGNode(createProgram(gl, resources.vs_particle, resources.fs_particle), waterParticleNode)));
-
-  createRobot(root);
+  createRobot(root, resources);
   return root;
 }
 
@@ -170,7 +167,7 @@ function initCubeBuffer() {
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeIndices), gl.STATIC_DRAW);
 }
 
-function createRobot(rootNode) {
+function createRobot(rootNode, resources) {
   cubeNode = new MaterialNode([new RenderSGNode(makeCube(2,2,2))]);
   cubeNode.ambient = [0.24725, 0.1995, 0.0745, 1];
   cubeNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
@@ -195,6 +192,10 @@ function createRobot(rootNode) {
   sphereNode.specular = [0.628281, 0.555802, 0.366065, 1];
   sphereNode.shininess = 0.4;
   headTransformationNode = (new TransformationSGNode(glm.transform({translate: [0.3, 2.2, 0], scale: [2, 2, 2]}),sphereNode))
+
+
+  waterParticleNode = new TextureSGNode(resources.water_particle);
+  headTransformationNode.append(new TransformationSGNode(glm.translate(0, 0, 0), new ShaderSGNode(createProgram(gl, resources.vs_particle, resources.fs_particle), waterParticleNode)));
 
   robotTransformationNode.append(headTransformationNode);
 
@@ -435,18 +436,25 @@ class ParticleNode extends RenderSGNode {
     this.currentPos = [0, 0, 0];
     this.direction = direction;
     this.speed = speed;
-    this.age = 0;
+    this.age = 0.0;
   }
 
   update(time) {
-    this.age = time - this.starttime;
-    if (this.age <= particleLife) {
-      // paricle lives on
-      this.currentPos[0] = this.origin[0] + (this.speed * this.age) * this.direction[0];
-      this.currentPos[1] = this.origin[1] + (this.speed * this.age) * this.direction[1];
-      this.currentPos[2] = this.origin[2] + (this.speed * this.age) * this.direction[2];
+    this.age = time - this.originTime;
+    // paricle lives on
+    if (this.age < particleLife) {
+      // randomly send them in both x & z direction
+      if ((Math.random() * 10) <= 5) {
+        this.currentPos[0] = this.origin[0] + (this.speed * this.age) * this.direction[0];
+        this.currentPos[1] = this.origin[1] + (this.speed * this.age) * this.direction[1];
+        this.currentPos[2] = this.origin[2] + (this.speed * this.age) * this.direction[2];
+      } else {
+        this.currentPos[0] = this.origin[0] - (this.speed * this.age) * this.direction[0];
+        this.currentPos[1] = this.origin[1] + (this.speed * this.age) * this.direction[1];
+        this.currentPos[2] = this.origin[2] - (this.speed * this.age) * this.direction[2];
+      }
+    // reset particle
     } else {
-      // reset particle
       this.originTime = time;
       this.age = 0;
       this.currentPos[0] = this.origin[0];
@@ -458,7 +466,7 @@ class ParticleNode extends RenderSGNode {
 
 function createParticles(timeInMilliseconds) {
   if (particleNodes.length < maxParticles) {
-    let particle = new ParticleNode(makeSphere(0.01, 5, 5), timeInMilliseconds, [Math.random(), Math.random(), Math.random()], [0, 0, 1], 1);
+    let particle = new ParticleNode(makeSphere(0.01, 20, 20), timeInMilliseconds, [Math.random()*3, Math.random() / 3, 0], [Math.random()/2, Math.random(), Math.random()/2], 0.0005);
     particles.push(particle);
     var dummy = new TransformationSGNode(mat4.create(), particle);
     waterParticleNode.append(dummy);
