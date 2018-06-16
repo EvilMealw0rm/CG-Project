@@ -15,6 +15,8 @@ var yaw = -90;
 var speed = 0.2;
 var sensitivity = 0.05;
 
+var lookatVec = vec3.fromValues(0, 0, 0);
+
 var deltaTime = 0;
 var prevTime = 0;
 
@@ -22,6 +24,13 @@ var prevTime = 0;
 var sceneOne = 10000;
 var sceneTwo = 20000;
 var movieEnd = 30000;
+
+// animation
+var autoPilot = true;
+var animationPos = vec3.fromValues(0, 0, 0);
+var animationLookAt = vec3.fromValues(0, 0, 0);
+
+var animationRunning = true;
 
 // constant upvector
 var upvector = vec3.fromValues(0, 1, 0);
@@ -45,6 +54,16 @@ var framebufferHeight = 512;
 var animatedAngle = 0;
 var legRotationAngle = 0;
 var fieldOfViewInRadians = convertDegreeToRadians(30);
+
+// POI
+var startPoint = vec3.fromValues(0, 0, 0);
+var checkPoint1 = vec3.fromValues(0, 0, -20);
+var checkPoint2 = vec3.fromValues(0, 0, 40);
+
+var cameraStartpoint = cameraPos;
+var cameraCheckpoint1 = vec3.fromValues(0, 0, -5);
+var cameraCheckpoint2 = vec3.fromValues(-7, 7, -5);
+var cameraCheckpoint3 = vec3.fromValues(0, 0, 0);
 
 // robot variables
 var robotMoving = true;
@@ -112,7 +131,7 @@ const root = new ShaderSGNode(createProgram(gl, resources.vs_phong, resources.fs
 {
   var skybox = new ShaderSGNode(createProgram(gl, resources.vs_env, resources.fs_env), [
     new EnvironmentSGNode(envcubetexture, 4, false,
-      new RenderSGNode(makeSphere(60)))
+      new RenderSGNode(makeSphere(100)))
   ]);
   root.append(skybox);
 }
@@ -133,6 +152,7 @@ root.append(grass);
   grass.append(new TransformationSGNode(glm.transform({ translate: [0,-1.5,0], rotateX: -90, scale: 3}), [
     floor
   ]));
+
   let light = new LightNode();
   light.ambient = [0,0,0,1];
   light.diffuse = [1,1,1,1];
@@ -158,7 +178,7 @@ function initCubeMap(resources) {
   gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   //set correct image for each side of the cube map
-  gl.pixelStorei(gl.UNPACK_FLIP_Z_WEBGL, true);//flipping required for our skybox, otherwise images don't fit together
+  //gl.pixelStorei(gl.UNPACK_FLIP_Z_WEBGL, true);//flipping required for our skybox, otherwise images don't fit together
   gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_pos_x);
   gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_neg_x);
   gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_pos_y);
@@ -276,7 +296,7 @@ function render(timeInMilliseconds) {
   const context = createSGContext(gl);
   context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
 
-  let lookatVec = vec3.add(vec3.create(), cameraPos, cameraFront);
+  lookatVec = vec3.add(vec3.create(), cameraPos, cameraFront);
   let lookAtMatrix = mat4.lookAt(mat4.create(), cameraPos, lookatVec, cameraUp);
 
   context.viewMatrix = lookAtMatrix;
@@ -302,23 +322,56 @@ function render(timeInMilliseconds) {
   animatedAngle = timeInMilliseconds/10;
 }
 
-function setAnimationParameters(timeInMilliseconds) {
+function setAnimationParameters(timeInMilliseconds, deltaTime) {
+  if (!animationRunning) {
+    return;
+  }
 
-  var delta = timeInMilliseconds - prevTime;
-  prevTime = timeInMilliseconds;
+  // errorhandling for 1st call where deltaTime = NaN
+  if (isNaN(deltaTime)) {
+    deltaTime = 0.001;
+  }
 
+  var timeInSeconds = timeInMilliseconds / 1000;
+  var stepSize = 0;
+
+  // Robot movement
   if (timeInMilliseconds < sceneOne) {
+    stepSize = deltaTime / 10000;
     robotMoving = true;
-    robotMovement -= 0.05;
+    robotMovement += stepSize * (checkPoint1[2] - startPoint[2]);
   } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo) {
     robotMoving = false;
     //robotMovement -= 0,05;
   } else if (timeInMilliseconds >= sceneTwo && timeInMilliseconds < movieEnd) {
+    stepSize = deltaTime / 10000;
     robotMoving = true;
-    robotMovement += 0.05;
+    robotMovement += stepSize * (checkPoint2[2] - checkPoint1[2]);
   } else if (timeInMilliseconds >= movieEnd) {
     robotMoving = false;
   }
+
+  // Camera flight
+  if (timeInMilliseconds < sceneOne - 2000) {
+    stepSize = deltaTime / 8000;
+    animationPos[2] += stepSize * (cameraCheckpoint1[2] - cameraStartpoint[2]);
+  } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo - 5000) {
+    stepSize = deltaTime / 5000;
+    animationPos[0] += stepSize * (cameraCheckpoint2[0] - cameraCheckpoint1[0]);
+    animationPos[1] += stepSize * (cameraCheckpoint2[1] - cameraCheckpoint1[1]);
+    turnCameraHorizontal(stepSize, 90);
+    turnCameraVertical(stepSize, -45);
+
+  } else if (timeInMilliseconds >= sceneOne + 5000 && timeInMilliseconds < sceneTwo) {
+    stepSize = deltaTime / 5000;
+
+  } else if (timeInMilliseconds >= sceneTwo + 5000 && timeInMilliseconds < movieEnd) {
+    stepSize = deltaTime / 5000;
+    turnCameraVertical(stepSize, +45);
+    turnCameraHorizontal(stepSize, 90);
+
+  }
+  setCameraPos(animationPos);
 
 }
 
@@ -360,7 +413,7 @@ function moveRobotToPos() {
 function createSceneGraphContext(gl, shader) {
 
   //create a default projection matrix
-  projectionMatrix = mat4.perspective(mat4.create(), fieldOfViewInRadians, aspectRatio, 0.01, 100);
+  projectionMatrix = mat4.perspective(mat4.create(), fieldOfViewInRadians, aspectRatio, 0.01, 150);
   //set projection matrix
   gl.uniformMatrix4fv(gl.getUniformLocation(shader, 'u_projection'), false, projectionMatrix);
 
@@ -387,7 +440,7 @@ function convertDegreeToRadians(degree) {
 }
 
 function makeFloor() {
-  var floor = makeRect(2, 2);
+  var floor = makeRect(10, 10);
   //TASK 3: adapt texture coordinates
   floor.texture = [0, 0,   1, 0,   1, 1,   0, 1];
   return floor;
@@ -617,21 +670,24 @@ function initInteraction(canvas) {
   });
 }
 
+
+// A lot of camera functions
+
 function updateCameraVectors() {
   // calc new front vec
   cameraFront[0] = Math.cos(glm.deg2rad(yaw)) * Math.cos(glm.deg2rad(pitch));
   cameraFront[1] = Math.sin(glm.deg2rad(pitch));
   cameraFront[2] = Math.sin(glm.deg2rad(yaw)) * Math.cos(glm.deg2rad(pitch));
   vec3.normalize(cameraFront, cameraFront);
-  // recalculate right- and upvector
+  // recalculate right-vec
   vec3.normalize(cameraRight, vec3.cross(vec3.create(), cameraFront, upvector));
-  vec3.normalize(cameraUp, vec3.cross(vec3.create(), cameraRight, cameraFront));
+  //vec3.normalize(cameraUp, vec3.cross(vec3.create(), cameraRight, cameraFront));
 }
 
 function resetCamera() {
-  setCameraPosAndLookAt(vec3.fromValues(0, -2, -10), vec3.fromValues(0, 0, 0));
   pitch = 0;
   yaw = -90;
+  setCameraPos(vec3.fromValues(0, 2, 1));
 }
 
 function moveWithMouse(deltaX, deltaY) {
@@ -652,6 +708,16 @@ function moveWithMouse(deltaX, deltaY) {
   updateCameraVectors();
 }
 
+function turnCameraHorizontal(increment, value) {
+  yaw += increment * value;
+  updateCameraVectors();
+}
+
+function turnCameraVertical(increment, value) {
+  pitch += increment * value;
+  updateCameraVectors();
+}
+
 function moveForward(velocity) {
   vec3.add(cameraPos, cameraPos, cameraFront);
 }
@@ -668,8 +734,13 @@ function strafeRight(velocity) {
   vec3.add(cameraPos, cameraPos, cameraRight);
 }
 
-function setCameraPosAndLookAt(toPos, toLook) {
+function setCameraPos(toPos) {
   cameraPos = toPos;
-  cameraUp = vec3.fromValues(0, 1, 0);
-  vec3.add(cameraFront, cameraPos, toLook);
+  updateCameraVectors();
+}
+
+function setCameraPosAndCameraFront(toPos, toFront) {
+  cameraPos = toPos;
+  cameraFront = toFront;
+  updateCameraVectors();
 }
