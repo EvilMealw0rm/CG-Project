@@ -30,7 +30,7 @@ var autoPilot = true;
 var animationPos = vec3.fromValues(0, 0, 0);
 var animationLookAt = vec3.fromValues(0, 0, 0);
 
-var animationRunning = false;
+var animationRunning = true;
 
 // constant upvector
 var upvector = vec3.fromValues(0, 1, 0);
@@ -57,11 +57,11 @@ var fieldOfViewInRadians = convertDegreeToRadians(30);
 
 // POI
 var startPoint = vec3.fromValues(0, 0, 0);
-var checkPoint1 = vec3.fromValues(0, 0, -20);
+var checkPoint1 = vec3.fromValues(1, 0, 36);
 var checkPoint2 = vec3.fromValues(0, 0, 40);
 
 var cameraStartpoint = cameraPos;
-var cameraCheckpoint1 = vec3.fromValues(0, 0, -5);
+var cameraCheckpoint1 = vec3.fromValues(-13, 3, 12);
 var cameraCheckpoint2 = vec3.fromValues(-7, 7, -5);
 var cameraCheckpoint3 = vec3.fromValues(0, 0, 0);
 
@@ -314,7 +314,7 @@ function render(timeInMilliseconds) {
   context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
 
   lookatVec = vec3.add(vec3.create(), cameraPos, cameraFront);
-  let lookAtMatrix = mat4.lookAt(mat4.create(), cameraPos, lookatVec, cameraUp);
+  let lookAtMatrix = mat4.lookAt(mat4.create(), cameraPos, lookatVec, upvector);
 
   context.viewMatrix = lookAtMatrix;
 
@@ -369,27 +369,38 @@ function setAnimationParameters(timeInMilliseconds, deltaTime) {
   }
 
   // Camera flight
-  if (timeInMilliseconds < sceneOne - 2000) {
-    stepSize = deltaTime / 8000;
-    animationPos[2] += stepSize * (cameraCheckpoint1[2] - cameraStartpoint[2]);
+  if (timeInMilliseconds < sceneOne) {
+    //stepSize = deltaTime / 8000;
+    animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, startPoint, checkPoint1, sceneOne);
+    animationPos = move3DVector(timeInMilliseconds, animationPos, cameraStartpoint, cameraCheckpoint1, sceneOne);
+    //animationPos[0] = cameraStartpoint[0] + timeInMilliseconds * ((cameraCheckpoint1[0] - cameraStartpoint[0]) / sceneOne);
+    //animationPos[1] = cameraStartpoint[1] + timeInMilliseconds * ((cameraCheckpoint1[1] - cameraStartpoint[1]) / sceneOne)
+    //animationPos[2] = cameraStartpoint[2] + timeInMilliseconds * ((cameraCheckpoint1[2] - cameraStartpoint[2]) / sceneOne)
   } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo - 5000) {
-    stepSize = deltaTime / 5000;
-    animationPos[0] += stepSize * (cameraCheckpoint2[0] - cameraCheckpoint1[0]);
-    animationPos[1] += stepSize * (cameraCheckpoint2[1] - cameraCheckpoint1[1]);
-    turnCameraHorizontal(stepSize, 90);
-    turnCameraVertical(stepSize, -45);
 
   } else if (timeInMilliseconds >= sceneOne + 5000 && timeInMilliseconds < sceneTwo) {
-    stepSize = deltaTime / 5000;
+    //stepSize = deltaTime / 5000;
 
   } else if (timeInMilliseconds >= sceneTwo + 5000 && timeInMilliseconds < movieEnd) {
-    stepSize = deltaTime / 5000;
-    turnCameraVertical(stepSize, +45);
-    turnCameraHorizontal(stepSize, 90);
+    //stepSize = deltaTime / 5000;
+    //turnCameraVertical(stepSize, +45);
+    //turnCameraHorizontal(stepSize, 90);
 
   }
-  setCameraPos(animationPos);
+  if (autoPilot) {
+    setCameraPosAndLookAt(animationPos, animationLookAt);
+  }
 
+}
+
+/**
+* Moves a vector from start to end in the time it has to be moved
+*/
+function move3DVector(currentTime, vectorToMove, start, end, timeToMove) {
+  vectorToMove[0] = start[0] + currentTime * ((end[0] - start[0]) / timeToMove);
+  vectorToMove[1] = start[1] + currentTime * ((end[1] - start[1]) / timeToMove);
+  vectorToMove[2] = start[2] + currentTime * ((end[2] - start[2]) / timeToMove);
+  return vectorToMove;
 }
 
 function moveRobot() {
@@ -659,27 +670,35 @@ function initInteraction(canvas) {
     let velocity = 1;
     switch (event.code) {
       case "KeyR":
+        if (autoPilot) return;
         resetCamera();
         break;
       case "KeyW":
       case "ArrowUp":
       case "Numpad8":
+        if (autoPilot) return;
         moveForward(velocity);
         break;
       case "KeyA":
       case "ArrowLeft":
       case "Numpad4":
+        if (autoPilot) return;
         strafeLeft(velocity);
         break;
       case "KeyS":
       case "ArrowDown":
       case "Numpad2":
+        if (autoPilot) return;
         moveBackward(velocity);
         break;
       case "KeyD":
       case "ArrowRight":
       case "Numpad6":
+        if (autoPilot) return;
         strafeRight(velocity);
+        break;
+      case "KeyM":
+        autoPilot = !autoPilot;
         break;
       default:
 
@@ -697,7 +716,7 @@ function updateCameraVectors() {
   cameraFront[2] = Math.sin(glm.deg2rad(yaw)) * Math.cos(glm.deg2rad(pitch));
   vec3.normalize(cameraFront, cameraFront);
   // recalculate right-vec
-  vec3.normalize(cameraRight, vec3.cross(vec3.create(), cameraFront, upvector));
+  recalculateRightVec();
   //vec3.normalize(cameraUp, vec3.cross(vec3.create(), cameraRight, cameraFront));
 }
 
@@ -723,6 +742,10 @@ function moveWithMouse(deltaX, deltaY) {
   }
 
   updateCameraVectors();
+}
+
+function recalculateRightVec() {
+  vec3.normalize(cameraRight, vec3.cross(vec3.create(), cameraFront, upvector));
 }
 
 function turnCameraHorizontal(increment, value) {
@@ -756,8 +779,13 @@ function setCameraPos(toPos) {
   updateCameraVectors();
 }
 
-function setCameraPosAndCameraFront(toPos, toFront) {
+function setCameraPosAndLookAt(toPos, lookAt) {
   cameraPos = toPos;
-  cameraFront = toFront;
-  updateCameraVectors();
+  vec3.sub(cameraFront, lookAt, toPos);
+  recalculateRightVec();
+  updateLookAtVector(lookAt);
+}
+
+function updateLookAtVector(toLookAt) {
+  lookatVec = toLookAt;
 }
