@@ -30,7 +30,7 @@ var autoPilot = true;
 var animationPos = vec3.fromValues(0, 0, 0);
 var animationLookAt = vec3.fromValues(0, 0, 0);
 
-var animationRunning = true;
+var animationRunning = false;
 
 // constant upvector
 var upvector = vec3.fromValues(0, 1, 0);
@@ -40,7 +40,7 @@ var context;
 
 // particles
 const particleLife = 1000;
-const maxParticles = 4000;
+const maxParticles = 800000;
 var particles = [];
 var particleNodes = [];
 var waterParticleNode;
@@ -172,6 +172,12 @@ root.append(grass);
                  new RenderSGNode(resources.boat)));
   grass.append(boat);
 
+  waterParticleNode = new TextureSGNode(resources.water_particle);
+  let waterfallShaderNode =new ShaderSGNode(createProgram(gl, resources.vs_particle, resources.fs_particle));
+  root.append(waterfallShaderNode);
+  waterfallShaderNode.append(new TransformationSGNode(glm.transform({translate: [20, 8,80],rotateX: 180, scale: 4,
+     rotateY: 180}), waterParticleNode));
+
   createRobot(root, resources);
 
   return root;
@@ -261,9 +267,6 @@ function createRobot(rootNode, resources) {
   sphereNode.specular = [0.628281, 0.555802, 0.366065, 1];
   sphereNode.shininess = 0.4;
   headTransformationNode = (new TransformationSGNode(glm.transform({translate: [0.3, 2.2, 0], scale: [2, 2, 2]}),sphereNode));
-
-  waterParticleNode = new TextureSGNode(resources.water_particle);
-  headTransformationNode.append(new TransformationSGNode(glm.translate(0, 0, 0), new ShaderSGNode(createProgram(gl, resources.vs_particle, resources.fs_particle), waterParticleNode)));
 
   robotTransformationNode.append(headTransformationNode);
 
@@ -599,7 +602,7 @@ function createParticles(timeInMilliseconds) {
   if (particleNodes.length < maxParticles) {
     // create the particle
     // TODO: adjust parameters accordingly to the final "waterfall"
-    let particle = new ParticleNode(makeSphere(0.01, 20, 20), timeInMilliseconds, [Math.random()*3, Math.random() / 3, 0], [Math.random()/2, Math.random(), Math.random()/2], 0.0005);
+    let particle = new ParticleNode(makeSphere(0.01, 20, 50), timeInMilliseconds, [Math.random()*3, Math.random() / 3, 0], [Math.random()/2, Math.random()*5, Math.random()/2], 0.0005);
     // append the particle into the particle list
     particles.push(particle);
     var dummy = new TransformationSGNode(mat4.create(), particle);
