@@ -52,6 +52,7 @@ var framebufferHeight = 512;
 
 //camera and projection settings
 var animatedAngle = 0;
+var waterfallAnimation = 0;
 var legRotationAngle = 0;
 var fieldOfViewInRadians = convertDegreeToRadians(30);
 
@@ -88,6 +89,7 @@ var rootnofloor = null;
 loadResources({
   vs: 'shader/texture.vs.glsl',
   fs: 'shader/texture.fs.glsl',
+  vs_animated_texture: 'shader/animated_texture.vs.glsl',
   vs_env: 'shader/envmap.vs.glsl',
   fs_env: 'shader/envmap.fs.glsl',
   vs_phong: 'shader/phong.vs.glsl',
@@ -96,7 +98,7 @@ loadResources({
   fs_single: 'shader/empty.fs.glsl',
   vs_particle: 'shader/particle.vs.glsl',
   fs_particle: 'shader/particle.fs.glsl',
-  water_particle: 'models/water_particle.png',
+  water_particle: 'models/water_particle_light.png',
   env_pos_x: 'models/skybox/right.jpg',
   env_neg_x: 'models/skybox/left.jpg',
   env_pos_y: 'models/skybox/top.jpg',
@@ -106,6 +108,7 @@ loadResources({
   floortexture: 'models/grasslight.jpg',
   water_texture: 'models/water_texture.jpg',
   boat_texture: 'models/boattex.jpg',
+  waterfall_texture: 'models/waterfall_texture.png',
   boat: 'models/OldBoat.obj'
 }).then(function (resources /*an object containing our keys with the loaded resources*/) {
   init(resources);
@@ -121,7 +124,7 @@ function init(resources) {
   //create a GL context
   gl = createContext(canvasWidth, canvasHeight);
 
-gl.enable(gl.DEPTH_TEST);
+  gl.enable(gl.DEPTH_TEST);
 
   initCubeMap(resources);
 
@@ -140,7 +143,6 @@ const root = new ShaderSGNode(createProgram(gl, resources.vs_phong, resources.fs
   ]);
   root.append(skybox);
 }
-
 
 const grass = new ShaderSGNode(createProgram(gl, resources.vs, resources.fs));
 
@@ -179,11 +181,20 @@ root.append(grass);
   let boat = new AdvancedTextureSGNode(resources.boat_texture, boatTransformatioNode);
   grass.append(boat);
 
-  waterParticleNode = new TextureSGNode(resources.water_particle);
-  let waterfallShaderNode =new ShaderSGNode(createProgram(gl, resources.vs_particle, resources.fs_particle));
-  root.append(waterfallShaderNode);
-  waterfallShaderNode.append(new TransformationSGNode(glm.transform({translate: [20, 8,80],rotateX: 180, scale: 4,
-     rotateY: 180}), waterParticleNode));
+  let animatedTexture = new ShaderSGNode(createProgram(gl, resources.vs_animated_texture, resources.fs));
+  root.append(animatedTexture);
+
+  let waterfall = new AnimatedTextureSGNode(resources.water_texture,
+                  new TransformationSGNode(glm.transform({translate: [20, 3,80], scale: [0.3,0.5,0.5]}),
+                  new RenderSGNode(makeFloor())));
+  animatedTexture.append(waterfall);
+
+
+   waterParticleNode = new TextureSGNode(resources.water_particle);
+   let waterfallShaderNode =new ShaderSGNode(createProgram(gl, resources.vs_particle, resources.fs_particle));
+   root.append(waterfallShaderNode);
+   waterfallShaderNode.append(new TransformationSGNode(glm.transform({translate: [15, -1,75], scale: 2.5}),
+            waterParticleNode));
 
   createRobot(root, resources);
 
@@ -332,6 +343,7 @@ function render(timeInMilliseconds) {
 
   root.render(context);
 
+  waterfallAnimation += 0.01;
   //request another render call as soon as possible
   requestAnimationFrame(render);
 
@@ -555,6 +567,17 @@ class TextureSGNode extends AdvancedTextureSGNode {
     }
 }
 
+//a scene graph node for setting texture animation parameter
+class AnimatedTextureSGNode extends AdvancedTextureSGNode {
+  constructor(image, children) {
+        super(image, children);
+    }
+    render(context) {
+      gl.uniform1f(gl.getUniformLocation(context.shader, 'u_texture_transform'),waterfallAnimation);
+        super.render(context);
+
+    }
+}
 /**
 * Particle node
 */
@@ -601,7 +624,7 @@ function createParticles(timeInMilliseconds) {
   if (particleNodes.length < maxParticles) {
     // create the particle
     // TODO: adjust parameters accordingly to the final "waterfall"
-    let particle = new ParticleNode(makeSphere(0.01, 20, 50), timeInMilliseconds, [Math.random()*3, Math.random() / 3, 0], [Math.random()/2, Math.random()*5, Math.random()/2], 0.0005);
+    let particle = new ParticleNode(makeSphere(0.01, 20, 50), timeInMilliseconds, [Math.random()*3, Math.random() / 3, 0], [Math.random()/2, Math.random(), Math.random()/2], 0.0005);
     // append the particle into the particle list
     particles.push(particle);
     var dummy = new TransformationSGNode(mat4.create(), particle);
