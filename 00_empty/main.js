@@ -30,7 +30,7 @@ var autoPilot = true;
 var animationPos = vec3.fromValues(0, 0, 0);
 var animationLookAt = vec3.fromValues(0, 0, 0);
 
-var animationRunning = false;
+var animationRunning = true;
 
 // constant upvector
 var upvector = vec3.fromValues(0, 1, 0);
@@ -57,22 +57,26 @@ var fieldOfViewInRadians = convertDegreeToRadians(30);
 
 // POI
 var startPoint = vec3.fromValues(0, 0, 0);
-var checkPoint1 = vec3.fromValues(0, 0, -20);
-var checkPoint2 = vec3.fromValues(0, 0, 40);
+var checkPoint1 = vec3.fromValues(1, 0, 36);
+var checkPoint2 = vec3.fromValues(5, 0, 45);
 
 var cameraStartpoint = cameraPos;
-var cameraCheckpoint1 = vec3.fromValues(0, 0, -5);
-var cameraCheckpoint2 = vec3.fromValues(-7, 7, -5);
+var cameraCheckpoint1 = vec3.fromValues(-13, 3, 12);
+var cameraCheckpoint2 = vec3.fromValues(-16, 7, 25);
 var cameraCheckpoint3 = vec3.fromValues(0, 0, 0);
 
 // robot variables
 var robotMoving = true;
-var robotMovement = 0;
+var robotMovement = vec3.fromValues(0, 0, 0);
 var legUp = true;
 var robotTransformationNode;
 var headTransformationNode;
 var leftLegTransformationNode;
 var rightLegtTransformationNode;
+
+// boat variables
+var boatMovement = vec3.fromValues(1, -1.5, 37);
+var boatTransformatioNode;
 
 //textures
 var floorTexture;
@@ -167,9 +171,12 @@ root.append(grass);
   light.append(createLightSphere())
   root.append(light);
 
-  let boat = new AdvancedTextureSGNode(resources.boat_texture,
-                 new TransformationSGNode(glm.transform({translate: [1,-1.5,37],scale: [0.3,0.3,0.3]}),
-                 new RenderSGNode(resources.boat)));
+  boatTransformatioNode = new TransformationSGNode(
+    glm.transform({
+      translate: [boatMovement[0], boatMovement[1], boatMovement[2]],
+      scale: [0.3,0.3,0.3]
+      }), new RenderSGNode(resources.boat));
+  let boat = new AdvancedTextureSGNode(resources.boat_texture, boatTransformatioNode);
   grass.append(boat);
 
   waterParticleNode = new TextureSGNode(resources.water_particle);
@@ -314,7 +321,7 @@ function render(timeInMilliseconds) {
   context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
 
   lookatVec = vec3.add(vec3.create(), cameraPos, cameraFront);
-  let lookAtMatrix = mat4.lookAt(mat4.create(), cameraPos, lookatVec, cameraUp);
+  let lookAtMatrix = mat4.lookAt(mat4.create(), cameraPos, lookatVec, upvector);
 
   context.viewMatrix = lookAtMatrix;
 
@@ -323,13 +330,6 @@ function render(timeInMilliseconds) {
   //get inverse view matrix to allow to compute viewing direction in world space for environment mapping
   context.invViewMatrix = mat4.invert(mat4.create(), context.viewMatrix);
 
-  //TASK 0-2 rotate whole scene according to the mouse rotation stored in
-  //camera.rotation.x and camera.rotation.y
-  //context.sceneMatrix = mat4.create();
-  //robotTransformationNode.matrix = glm.rotateY(animatedAngle/2);
-  //context.sceneMatrix = mat4.multiply(mat4.create(),
-  //                          glm.rotateY(camera.rotation.x),
-  //                          glm.rotateX(camera.rotation.y));
   root.render(context);
 
   //request another render call as soon as possible
@@ -354,48 +354,49 @@ function setAnimationParameters(timeInMilliseconds, deltaTime) {
 
   // Robot movement
   if (timeInMilliseconds < sceneOne) {
-    stepSize = deltaTime / 10000;
-    robotMoving = true;
-    robotMovement += stepSize * (checkPoint1[2] - startPoint[2]);
+    robotMovement = move3DVector(timeInMilliseconds, robotMovement, startPoint, checkPoint1, 0, sceneOne);
   } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo) {
     robotMoving = false;
-    //robotMovement -= 0,05;
+    boatMoving = true;
+    boatMovement = move3DVector(timeInMilliseconds, boatMovement, checkPoint1, checkPoint2, sceneOne, sceneTwo);
+    robotMovement = move3DVector(timeInMilliseconds, robotMovement, checkPoint1, checkPoint2, sceneOne, sceneTwo);
   } else if (timeInMilliseconds >= sceneTwo && timeInMilliseconds < movieEnd) {
-    stepSize = deltaTime / 10000;
-    robotMoving = true;
-    robotMovement += stepSize * (checkPoint2[2] - checkPoint1[2]);
+    // robotMoving = true;
   } else if (timeInMilliseconds >= movieEnd) {
     robotMoving = false;
   }
 
   // Camera flight
-  if (timeInMilliseconds < sceneOne - 2000) {
-    stepSize = deltaTime / 8000;
-    animationPos[2] += stepSize * (cameraCheckpoint1[2] - cameraStartpoint[2]);
-  } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo - 5000) {
-    stepSize = deltaTime / 5000;
-    animationPos[0] += stepSize * (cameraCheckpoint2[0] - cameraCheckpoint1[0]);
-    animationPos[1] += stepSize * (cameraCheckpoint2[1] - cameraCheckpoint1[1]);
-    turnCameraHorizontal(stepSize, 90);
-    turnCameraVertical(stepSize, -45);
-
-  } else if (timeInMilliseconds >= sceneOne + 5000 && timeInMilliseconds < sceneTwo) {
-    stepSize = deltaTime / 5000;
-
+  if (timeInMilliseconds < sceneOne) {
+    animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, startPoint, checkPoint1, 0, sceneOne);
+    animationPos = move3DVector(timeInMilliseconds, animationPos, cameraStartpoint, cameraCheckpoint1, 0, sceneOne);
+  } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo) {
+    animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, checkPoint1, checkPoint2, sceneOne, sceneTwo);
+    animationPos = move3DVector(timeInMilliseconds, animationPos, cameraCheckpoint1, cameraCheckpoint2, sceneOne, sceneTwo);
   } else if (timeInMilliseconds >= sceneTwo + 5000 && timeInMilliseconds < movieEnd) {
-    stepSize = deltaTime / 5000;
-    turnCameraVertical(stepSize, +45);
-    turnCameraHorizontal(stepSize, 90);
 
   }
-  setCameraPos(animationPos);
+  if (autoPilot) {
+    setCameraPosAndLookAt(animationPos, animationLookAt);
+  }
+  console.log(robotMovement);
 
 }
 
+/**
+* Moves a vector from start to end beginning at starttime and ending at endtime
+*/
+function move3DVector(currentTime, vectorToMove, start, end, starttime, endtime) {
+  vectorToMove[0] = start[0] + (currentTime - starttime) * ((end[0] - start[0]) / (endtime - starttime));
+  vectorToMove[1] = start[1] + (currentTime - starttime) * ((end[1] - start[1]) / (endtime - starttime));
+  vectorToMove[2] = start[2] + (currentTime - starttime) * ((end[2] - start[2]) / (endtime - starttime));
+  return vectorToMove;
+}
+
 function moveRobot() {
+  //update transformation of robot for walking animation
+  robotTransformationNode.matrix = glm.transform({translate: [robotMovement[0],robotMovement[1],robotMovement[2]]});
   if (robotMoving) {
-    //update transformation of robot for walking animation
-    robotTransformationNode.matrix = glm.transform({translate: [0,0,robotMovement]})
 
     //update leg transformation to move left leg
     leftLegTransformationNode.matrix = glm.transform({rotateX: legRotationAngle, translate: [0.5,-0.5,0], scale: [0.1,1,0.1]});
@@ -412,13 +413,11 @@ function moveRobot() {
       legRotationAngle = legRotationAngle + 0.5;
     else
       legRotationAngle = legRotationAngle - 0.5;
-
-    //robotMovement -= 0.05
   }
 }
 
-function moveRobotToPos() {
-
+function moveBoat() {
+  boatTransformatioNode.matrix = glm.transform({translate: [boatMovement[0], boatMovement[1], boatMovement[2]]});
 }
 
 /**
@@ -659,34 +658,42 @@ function initInteraction(canvas) {
     let velocity = 1;
     switch (event.code) {
       case "KeyR":
+        if (autoPilot) return;
         resetCamera();
         break;
       case "KeyW":
       case "ArrowUp":
       case "Numpad8":
+        if (autoPilot) return;
         moveForward(velocity);
         break;
       case "KeyA":
       case "ArrowLeft":
       case "Numpad4":
+        if (autoPilot) return;
         strafeLeft(velocity);
         break;
       case "KeyS":
       case "ArrowDown":
       case "Numpad2":
+        if (autoPilot) return;
         moveBackward(velocity);
         break;
       case "KeyD":
       case "ArrowRight":
       case "Numpad6":
+        if (autoPilot) return;
         strafeRight(velocity);
+        break;
+      case "KeyM":
+        autoPilot = !autoPilot;
+        updateCameraVectors();
         break;
       default:
 
     }
   });
 }
-
 
 // A lot of camera functions
 
@@ -697,8 +704,7 @@ function updateCameraVectors() {
   cameraFront[2] = Math.sin(glm.deg2rad(yaw)) * Math.cos(glm.deg2rad(pitch));
   vec3.normalize(cameraFront, cameraFront);
   // recalculate right-vec
-  vec3.normalize(cameraRight, vec3.cross(vec3.create(), cameraFront, upvector));
-  //vec3.normalize(cameraUp, vec3.cross(vec3.create(), cameraRight, cameraFront));
+  recalculateRightVec();
 }
 
 function resetCamera() {
@@ -723,6 +729,10 @@ function moveWithMouse(deltaX, deltaY) {
   }
 
   updateCameraVectors();
+}
+
+function recalculateRightVec() {
+  vec3.normalize(cameraRight, vec3.cross(vec3.create(), cameraFront, upvector));
 }
 
 function turnCameraHorizontal(increment, value) {
@@ -756,8 +766,19 @@ function setCameraPos(toPos) {
   updateCameraVectors();
 }
 
-function setCameraPosAndCameraFront(toPos, toFront) {
+function setCameraPosAndLookAt(toPos, lookAt) {
   cameraPos = toPos;
-  cameraFront = toFront;
-  updateCameraVectors();
+  vec3.sub(cameraFront, lookAt, toPos);
+  recalculateRightVec();
+  recalculateYawAndPitch();
+  updateLookAtVector(lookAt);
+}
+
+function recalculateYawAndPitch() {
+  yaw = (vec3.angle(vec3.fromValues(cameraFront[0], 0, cameraFront[2]), vec3.fromValues(0, 0, -1)) * 180 / Math.PI) - 90;
+  pitch = 90 - (vec3.angle(vec3.fromValues(0, cameraFront[1], cameraFront[2]), upvector) * 180 / Math.PI);
+}
+
+function updateLookAtVector(toLookAt) {
+  lookatVec = toLookAt;
 }

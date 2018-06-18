@@ -58,21 +58,25 @@ var fieldOfViewInRadians = convertDegreeToRadians(30);
 // POI
 var startPoint = vec3.fromValues(0, 0, 0);
 var checkPoint1 = vec3.fromValues(1, 0, 36);
-var checkPoint2 = vec3.fromValues(0, 0, 40);
+var checkPoint2 = vec3.fromValues(5, 0, 45);
 
 var cameraStartpoint = cameraPos;
 var cameraCheckpoint1 = vec3.fromValues(-13, 3, 12);
-var cameraCheckpoint2 = vec3.fromValues(-7, 7, -5);
+var cameraCheckpoint2 = vec3.fromValues(-16, 7, 25);
 var cameraCheckpoint3 = vec3.fromValues(0, 0, 0);
 
 // robot variables
 var robotMoving = true;
-var robotMovement = 0;
+var robotMovement = vec3.fromValues(0, 0, 0);
 var legUp = true;
 var robotTransformationNode;
 var headTransformationNode;
 var leftLegTransformationNode;
 var rightLegtTransformationNode;
+
+// boat variables
+var boatMovement = vec3.fromValues(1, -1.5, 37);
+var boatTransformatioNode;
 
 //textures
 var floorTexture;
@@ -167,9 +171,12 @@ root.append(grass);
   light.append(createLightSphere())
   root.append(light);
 
-  let boat = new AdvancedTextureSGNode(resources.boat_texture,
-                 new TransformationSGNode(glm.transform({translate: [1,-1.5,37],scale: [0.3,0.3,0.3]}),
-                 new RenderSGNode(resources.boat)));
+  boatTransformatioNode = new TransformationSGNode(
+    glm.transform({
+      translate: [boatMovement[0], boatMovement[1], boatMovement[2]],
+      scale: [0.3,0.3,0.3]
+      }), new RenderSGNode(resources.boat));
+  let boat = new AdvancedTextureSGNode(resources.boat_texture, boatTransformatioNode);
   grass.append(boat);
 
   waterParticleNode = new TextureSGNode(resources.water_particle);
@@ -323,13 +330,6 @@ function render(timeInMilliseconds) {
   //get inverse view matrix to allow to compute viewing direction in world space for environment mapping
   context.invViewMatrix = mat4.invert(mat4.create(), context.viewMatrix);
 
-  //TASK 0-2 rotate whole scene according to the mouse rotation stored in
-  //camera.rotation.x and camera.rotation.y
-  //context.sceneMatrix = mat4.create();
-  //robotTransformationNode.matrix = glm.rotateY(animatedAngle/2);
-  //context.sceneMatrix = mat4.multiply(mat4.create(),
-  //                          glm.rotateY(camera.rotation.x),
-  //                          glm.rotateX(camera.rotation.y));
   root.render(context);
 
   //request another render call as soon as possible
@@ -354,59 +354,49 @@ function setAnimationParameters(timeInMilliseconds, deltaTime) {
 
   // Robot movement
   if (timeInMilliseconds < sceneOne) {
-    stepSize = deltaTime / 10000;
-    robotMoving = true;
-    robotMovement += stepSize * (checkPoint1[2] - startPoint[2]);
+    robotMovement = move3DVector(timeInMilliseconds, robotMovement, startPoint, checkPoint1, 0, sceneOne);
   } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo) {
     robotMoving = false;
-    //robotMovement -= 0,05;
+    boatMoving = true;
+    boatMovement = move3DVector(timeInMilliseconds, boatMovement, checkPoint1, checkPoint2, sceneOne, sceneTwo);
+    robotMovement = move3DVector(timeInMilliseconds, robotMovement, checkPoint1, checkPoint2, sceneOne, sceneTwo);
   } else if (timeInMilliseconds >= sceneTwo && timeInMilliseconds < movieEnd) {
-    stepSize = deltaTime / 10000;
-    robotMoving = true;
-    robotMovement += stepSize * (checkPoint2[2] - checkPoint1[2]);
+    // robotMoving = true;
   } else if (timeInMilliseconds >= movieEnd) {
     robotMoving = false;
   }
 
   // Camera flight
   if (timeInMilliseconds < sceneOne) {
-    //stepSize = deltaTime / 8000;
-    animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, startPoint, checkPoint1, sceneOne);
-    animationPos = move3DVector(timeInMilliseconds, animationPos, cameraStartpoint, cameraCheckpoint1, sceneOne);
-    //animationPos[0] = cameraStartpoint[0] + timeInMilliseconds * ((cameraCheckpoint1[0] - cameraStartpoint[0]) / sceneOne);
-    //animationPos[1] = cameraStartpoint[1] + timeInMilliseconds * ((cameraCheckpoint1[1] - cameraStartpoint[1]) / sceneOne)
-    //animationPos[2] = cameraStartpoint[2] + timeInMilliseconds * ((cameraCheckpoint1[2] - cameraStartpoint[2]) / sceneOne)
-  } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo - 5000) {
-
-  } else if (timeInMilliseconds >= sceneOne + 5000 && timeInMilliseconds < sceneTwo) {
-    //stepSize = deltaTime / 5000;
-
+    animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, startPoint, checkPoint1, 0, sceneOne);
+    animationPos = move3DVector(timeInMilliseconds, animationPos, cameraStartpoint, cameraCheckpoint1, 0, sceneOne);
+  } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo) {
+    animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, checkPoint1, checkPoint2, sceneOne, sceneTwo);
+    animationPos = move3DVector(timeInMilliseconds, animationPos, cameraCheckpoint1, cameraCheckpoint2, sceneOne, sceneTwo);
   } else if (timeInMilliseconds >= sceneTwo + 5000 && timeInMilliseconds < movieEnd) {
-    //stepSize = deltaTime / 5000;
-    //turnCameraVertical(stepSize, +45);
-    //turnCameraHorizontal(stepSize, 90);
 
   }
   if (autoPilot) {
     setCameraPosAndLookAt(animationPos, animationLookAt);
   }
+  console.log(robotMovement);
 
 }
 
 /**
-* Moves a vector from start to end in the time it has to be moved
+* Moves a vector from start to end beginning at starttime and ending at endtime
 */
-function move3DVector(currentTime, vectorToMove, start, end, timeToMove) {
-  vectorToMove[0] = start[0] + currentTime * ((end[0] - start[0]) / timeToMove);
-  vectorToMove[1] = start[1] + currentTime * ((end[1] - start[1]) / timeToMove);
-  vectorToMove[2] = start[2] + currentTime * ((end[2] - start[2]) / timeToMove);
+function move3DVector(currentTime, vectorToMove, start, end, starttime, endtime) {
+  vectorToMove[0] = start[0] + (currentTime - starttime) * ((end[0] - start[0]) / (endtime - starttime));
+  vectorToMove[1] = start[1] + (currentTime - starttime) * ((end[1] - start[1]) / (endtime - starttime));
+  vectorToMove[2] = start[2] + (currentTime - starttime) * ((end[2] - start[2]) / (endtime - starttime));
   return vectorToMove;
 }
 
 function moveRobot() {
+  //update transformation of robot for walking animation
+  robotTransformationNode.matrix = glm.transform({translate: [robotMovement[0],robotMovement[1],robotMovement[2]]});
   if (robotMoving) {
-    //update transformation of robot for walking animation
-    robotTransformationNode.matrix = glm.transform({translate: [0,0,robotMovement]})
 
     //update leg transformation to move left leg
     leftLegTransformationNode.matrix = glm.transform({rotateX: legRotationAngle, translate: [0.5,-0.5,0], scale: [0.1,1,0.1]});
@@ -423,13 +413,11 @@ function moveRobot() {
       legRotationAngle = legRotationAngle + 0.5;
     else
       legRotationAngle = legRotationAngle - 0.5;
-
-    //robotMovement -= 0.05
   }
 }
 
-function moveRobotToPos() {
-
+function moveBoat() {
+  boatTransformatioNode.matrix = glm.transform({translate: [boatMovement[0], boatMovement[1], boatMovement[2]]});
 }
 
 /**
@@ -699,13 +687,13 @@ function initInteraction(canvas) {
         break;
       case "KeyM":
         autoPilot = !autoPilot;
+        updateCameraVectors();
         break;
       default:
 
     }
   });
 }
-
 
 // A lot of camera functions
 
@@ -717,7 +705,6 @@ function updateCameraVectors() {
   vec3.normalize(cameraFront, cameraFront);
   // recalculate right-vec
   recalculateRightVec();
-  //vec3.normalize(cameraUp, vec3.cross(vec3.create(), cameraRight, cameraFront));
 }
 
 function resetCamera() {
@@ -783,7 +770,13 @@ function setCameraPosAndLookAt(toPos, lookAt) {
   cameraPos = toPos;
   vec3.sub(cameraFront, lookAt, toPos);
   recalculateRightVec();
+  recalculateYawAndPitch();
   updateLookAtVector(lookAt);
+}
+
+function recalculateYawAndPitch() {
+  yaw = (vec3.angle(vec3.fromValues(cameraFront[0], 0, cameraFront[2]), vec3.fromValues(0, 0, -1)) * 180 / Math.PI) - 90;
+  pitch = 90 - (vec3.angle(vec3.fromValues(0, cameraFront[1], cameraFront[2]), upvector) * 180 / Math.PI);
 }
 
 function updateLookAtVector(toLookAt) {
