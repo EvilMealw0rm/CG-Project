@@ -40,7 +40,7 @@ var context;
 
 // particles
 const particleLife = 1000;
-const maxParticles = 800000;
+const maxParticles = 5000;
 var particles = [];
 var particleNodes = [];
 var waterParticleNode;
@@ -52,24 +52,32 @@ var framebufferHeight = 512;
 
 //camera and projection settings
 var animatedAngle = 0;
-var waterfallAnimation = 0;
 var legRotationAngle = 0;
 var fieldOfViewInRadians = convertDegreeToRadians(30);
 
 // POI
 var startPoint = vec3.fromValues(0, 0, 0);
 var checkPoint1 = vec3.fromValues(1, 0, 36);
-var checkPoint2 = vec3.fromValues(5, 0, 45);
+var checkPoint2 = vec3.fromValues(20, 0, 75);
 
 var cameraStartpoint = cameraPos;
 var cameraCheckpoint1 = vec3.fromValues(-13, 3, 12);
-var cameraCheckpoint2 = vec3.fromValues(-16, 7, 25);
+var cameraCheckpoint2 = vec3.fromValues(45, 10, 65);
 var cameraCheckpoint3 = vec3.fromValues(0, 0, 0);
+
+var rotationCheck1toCheck2 = 180 / Math.PI * vec3.angle(
+  [1, 0, 1],
+  [checkPoint2[0], 0 , checkPoint2[2]]);
 
 // robot variables
 var robotMoving = true;
 var robotMovement = vec3.fromValues(0, 0, 0);
 var legUp = true;
+var robotRotationX = 0;
+var robotRotationY = 0;
+var roboJumpPoint0 = checkPoint2;
+var roboJumpPoint1 = vec3.add(vec3.create(), roboJumpPoint0, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * -3, 2, Math.sin(rotationCheck1toCheck2) * 3));
+var roboJumpPoint2 = vec3.sub(vec3.create(), roboJumpPoint1, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * 3, 10, Math.sin(rotationCheck1toCheck2) * -3));
 var robotTransformationNode;
 var headTransformationNode;
 var leftLegTransformationNode;
@@ -78,6 +86,11 @@ var rightLegtTransformationNode;
 // boat variables
 var boatMovement = vec3.fromValues(1, -1.5, 37);
 var boatTransformatioNode;
+var boatRotationY = 0;
+
+// waterfall
+var waterfallAnimation = 0;
+var waterfallPos = vec3.fromValues(20, 3, 80);
 
 //textures
 var floorTexture;
@@ -134,27 +147,21 @@ function init(resources) {
 }
 
 function createSceneGraph(gl,resources){
-const root = new ShaderSGNode(createProgram(gl, resources.vs_phong, resources.fs_phong));
+  const root = new ShaderSGNode(createProgram(gl, resources.vs_phong, resources.fs_phong));
 
-{
-  var skybox = new ShaderSGNode(createProgram(gl, resources.vs_env, resources.fs_env), [
-    new EnvironmentSGNode(envcubetexture, 4, false,
-      new RenderSGNode(makeSphere(100)))
-  ]);
-  root.append(skybox);
-}
+  {
+    var skybox = new ShaderSGNode(createProgram(gl, resources.vs_env, resources.fs_env), [
+      new EnvironmentSGNode(envcubetexture, 4, false,
+        new RenderSGNode(makeSphere(100)))
+    ]);
+    root.append(skybox);
+  }
 
-const grass = new ShaderSGNode(createProgram(gl, resources.vs, resources.fs));
-
-function createLightSphere() {
-  return new ShaderSGNode(createProgram(gl, resources.vs_single, resources.fs_single), [
-    new RenderSGNode(makeSphere(.2,10,10))
-  ]);
-}
-root.append(grass);
-  let floor = new AdvancedTextureSGNode(resources.floortexture,
-              new RenderSGNode(makeFloor())
-            );
+  const grass = new ShaderSGNode(createProgram(gl, resources.vs, resources.fs));
+  root.append(grass);
+    let floor = new AdvancedTextureSGNode(resources.floortexture,
+                new RenderSGNode(makeFloor())
+              );
 
   grass.append(new TransformationSGNode(glm.transform({ translate: [0,-1.5,0], rotateX: -90, scale: [5,3,3]}), [
     floor
@@ -170,7 +177,7 @@ root.append(grass);
   light.diffuse = [1,1,1,1];
   light.specular = [1,1,1,1];
   light.position = [0,3,2];
-  light.append(createLightSphere())
+  light.append(createLightSphere(0.2, resources))
   root.append(light);
 
   boatTransformatioNode = new TransformationSGNode(
@@ -185,20 +192,26 @@ root.append(grass);
   root.append(animatedTexture);
 
   let waterfall = new AnimatedTextureSGNode(resources.water_texture,
-                  new TransformationSGNode(glm.transform({translate: [20, 3,80], scale: [0.3,0.5,0.5]}),
+                  new TransformationSGNode(glm.transform({translate: [waterfallPos[0], waterfallPos[1], waterfallPos[2]], scale: [0.3,0.5,0.5]}),
                   new RenderSGNode(makeFloor())));
   animatedTexture.append(waterfall);
 
 
-   waterParticleNode = new TextureSGNode(resources.water_particle);
-   let waterfallShaderNode =new ShaderSGNode(createProgram(gl, resources.vs_particle, resources.fs_particle));
-   root.append(waterfallShaderNode);
-   waterfallShaderNode.append(new TransformationSGNode(glm.transform({translate: [15, -1,75], scale: 2.5}),
-            waterParticleNode));
+  waterParticleNode = new TextureSGNode(resources.water_particle);
+  let waterfallShaderNode =new ShaderSGNode(createProgram(gl, resources.vs_particle, resources.fs_particle));
+  root.append(waterfallShaderNode);
+  waterfallShaderNode.append(new TransformationSGNode(glm.transform({translate: [waterfallPos[0] - 4, waterfallPos[1] - 4.5, waterfallPos[2]], scale: 2.5}),
+           waterParticleNode));
 
   createRobot(root, resources);
 
   return root;
+}
+
+function createLightSphere(radius, resources) {
+  return new ShaderSGNode(createProgram(gl, resources.vs_single, resources.fs_single), [
+    new RenderSGNode(makeSphere(radius,10,10))
+  ]);
 }
 
 function initCubeMap(resources) {
@@ -322,11 +335,13 @@ function render(timeInMilliseconds) {
   deltaTime = timeInMilliseconds - prevTime;
   prevTime = timeInMilliseconds;
 
-  createParticles(timeInMilliseconds);
+  createWaterfall(timeInMilliseconds);
 
   setAnimationParameters(timeInMilliseconds, deltaTime);
 
   moveRobot();
+
+  moveBoat();
 
   const context = createSGContext(gl);
   context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
@@ -342,8 +357,6 @@ function render(timeInMilliseconds) {
   context.invViewMatrix = mat4.invert(mat4.create(), context.viewMatrix);
 
   root.render(context);
-
-  waterfallAnimation += 0.01;
   //request another render call as soon as possible
   requestAnimationFrame(render);
 
@@ -352,6 +365,7 @@ function render(timeInMilliseconds) {
 }
 
 function setAnimationParameters(timeInMilliseconds, deltaTime) {
+
   if (!animationRunning) {
     return;
   }
@@ -367,13 +381,29 @@ function setAnimationParameters(timeInMilliseconds, deltaTime) {
   // Robot movement
   if (timeInMilliseconds < sceneOne) {
     robotMovement = move3DVector(timeInMilliseconds, robotMovement, startPoint, checkPoint1, 0, sceneOne);
-  } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo) {
+  } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo - 7000) {
     robotMoving = false;
-    boatMoving = true;
-    boatMovement = move3DVector(timeInMilliseconds, boatMovement, checkPoint1, checkPoint2, sceneOne, sceneTwo);
-    robotMovement = move3DVector(timeInMilliseconds, robotMovement, checkPoint1, checkPoint2, sceneOne, sceneTwo);
-  } else if (timeInMilliseconds >= sceneTwo && timeInMilliseconds < movieEnd) {
-    // robotMoving = true;
+
+    boatRotationY = calculateRotation(timeInMilliseconds, boatRotationY, 0, rotationCheck1toCheck2, sceneOne, sceneOne + 3000);
+    robotRotationY = calculateRotation(timeInMilliseconds, robotRotationY, 0, rotationCheck1toCheck2, sceneOne, sceneOne + 3000);
+    console.log("Robot: " + robotRotationY);
+    console.log("Boat: " + boatRotationY);
+  } else if (timeInMilliseconds >= sceneOne + 3000 && timeInMilliseconds < sceneTwo) {
+    robotMoving = false;
+    boatMovement = move3DVector(timeInMilliseconds, boatMovement,
+      [checkPoint1[0], checkPoint1[1] - 1.5, checkPoint1[2]],
+      [checkPoint2[0], checkPoint2[1] - 1.5, checkPoint2[2]],
+      sceneOne + 3000, sceneTwo);
+    robotMovement = move3DVector(timeInMilliseconds, robotMovement, checkPoint1,
+      checkPoint2, sceneOne + 3000, sceneTwo);
+    console.log(boatRotationY);
+  } else if (timeInMilliseconds >= sceneTwo && timeInMilliseconds < sceneTwo + 3000) {
+    robotRotationY = calculateRotation(timeInMilliseconds, robotRotationY, rotationCheck1toCheck2, rotationCheck1toCheck2 + 90, sceneTwo, sceneTwo + 3000);
+  } else if (timeInMilliseconds >= sceneTwo + 3000 && timeInMilliseconds < sceneTwo + 4000) {
+    robotMovement = move3DVector(timeInMilliseconds, robotMovement, roboJumpPoint0, roboJumpPoint1, sceneTwo + 3000, sceneTwo + 4000);
+    //robotRotationX = calculateRotation(timeInMilliseconds, robotRotationX, 0, 90, sceneTwo + 3000, sceneTwo + 4000);
+  } else if (timeInMilliseconds >= sceneTwo + 4000 && timeInMilliseconds < sceneTwo + 6000) {
+    robotMovement = move3DVector(timeInMilliseconds, robotMovement, roboJumpPoint1, roboJumpPoint2, sceneTwo + 4000, sceneTwo + 6000);
   } else if (timeInMilliseconds >= movieEnd) {
     robotMoving = false;
   }
@@ -391,7 +421,6 @@ function setAnimationParameters(timeInMilliseconds, deltaTime) {
   if (autoPilot) {
     setCameraPosAndLookAt(animationPos, animationLookAt);
   }
-  console.log(robotMovement);
 
 }
 
@@ -405,9 +434,17 @@ function move3DVector(currentTime, vectorToMove, start, end, starttime, endtime)
   return vectorToMove;
 }
 
+function calculateRotation(currentTime, rotationParameter, start, end, starttime, endtime) {
+  rotationParameter = start + (currentTime - starttime) * ((end - start) / (endtime - starttime));
+  return rotationParameter;
+}
+
 function moveRobot() {
   //update transformation of robot for walking animation
-  robotTransformationNode.matrix = glm.transform({translate: [robotMovement[0],robotMovement[1],robotMovement[2]]});
+  robotTransformationNode.matrix = glm.transform({
+    rotateY: robotRotationY,
+    rotateX: robotRotationX,
+    translate: [robotMovement[0],robotMovement[1],robotMovement[2]]});
   if (robotMoving) {
 
     //update leg transformation to move left leg
@@ -429,7 +466,7 @@ function moveRobot() {
 }
 
 function moveBoat() {
-  boatTransformatioNode.matrix = glm.transform({translate: [boatMovement[0], boatMovement[1], boatMovement[2]]});
+  boatTransformatioNode.matrix = glm.transform({rotateY: boatRotationY, translate: [boatMovement[0], boatMovement[1], boatMovement[2]], scale: [0.3, 0.3, 0.3]});
 }
 
 /**
@@ -552,7 +589,6 @@ class MaterialNode extends SGNode {
   }
 }
 
-
 //a scene graph node for setting texture parameters
 class TextureSGNode extends AdvancedTextureSGNode {
   constructor(image, children) {
@@ -618,13 +654,21 @@ class ParticleNode extends RenderSGNode {
 }
 
 /**
+* Creates the waterfall with particles
+*/
+function createWaterfall(timeInMilliseconds) {
+  waterfallAnimation += 0.01;
+  createParticles(timeInMilliseconds);
+}
+
+/**
 * Creates and updates the particles
 */
 function createParticles(timeInMilliseconds) {
   if (particleNodes.length < maxParticles) {
     // create the particle
     // TODO: adjust parameters accordingly to the final "waterfall"
-    let particle = new ParticleNode(makeSphere(0.01, 20, 50), timeInMilliseconds, [Math.random()*3, Math.random() / 3, 0], [Math.random()/2, Math.random(), Math.random()/2], 0.0005);
+    let particle = new ParticleNode(makeSphere(0.02, 50, 50), timeInMilliseconds, [Math.random() * 3, Math.random() / 3, 0], [Math.random() / 2, Math.random(), Math.random() / 2], 0.0005);
     // append the particle into the particle list
     particles.push(particle);
     var dummy = new TransformationSGNode(mat4.create(), particle);
