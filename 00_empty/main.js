@@ -15,6 +15,8 @@ var yaw = -90;
 var speed = 0.2;
 var sensitivity = 0.05;
 
+var yawNeutral = vec3.clone(cameraFront);
+
 var lookatVec = vec3.fromValues(0, 0, 0);
 
 var deltaTime = 0;
@@ -33,7 +35,7 @@ var animationLookAt = vec3.fromValues(0, 0, 0);
 var animationRunning = true;
 
 // constant upvector
-var upvector = vec3.fromValues(0, 1, 0);
+const upvector = vec3.fromValues(0, 1, 0);
 
 //rendering context
 var context;
@@ -60,7 +62,7 @@ var farClipPlane = 500;
 var skyBoxRadius = 250;
 
 // POI
-var startPoint = vec3.fromValues(0, 0, 0);
+var startPoint = vec3.clone(cameraPos);
 var checkPoint1 = vec3.fromValues(1, 0, 36);
 var checkPoint2 = vec3.fromValues(20, 0, 95);
 
@@ -394,8 +396,6 @@ function setAnimationParameters(timeInMilliseconds, deltaTime) {
 
     boatRotationY = calculateRotation(timeInMilliseconds, boatRotationY, 0, rotationCheck1toCheck2, sceneOne, sceneOne + 3000);
     robotRotationY = calculateRotation(timeInMilliseconds, robotRotationY, 0, rotationCheck1toCheck2, sceneOne, sceneOne + 3000);
-    console.log("Robot: " + robotRotationY);
-    console.log("Boat: " + boatRotationY);
   } else if (timeInMilliseconds >= sceneOne + 3000 && timeInMilliseconds < sceneTwo) {
     robotMoving = false;
     boatMovement = move3DVector(timeInMilliseconds, boatMovement,
@@ -404,7 +404,6 @@ function setAnimationParameters(timeInMilliseconds, deltaTime) {
       sceneOne + 3000, sceneTwo);
     robotMovement = move3DVector(timeInMilliseconds, robotMovement, checkPoint1,
       checkPoint2, sceneOne + 3000, sceneTwo);
-    console.log(boatRotationY);
   } else if (timeInMilliseconds >= sceneTwo && timeInMilliseconds < sceneTwo + 3000) {
     robotRotationY = calculateRotation(timeInMilliseconds, robotRotationY, rotationCheck1toCheck2, rotationCheck1toCheck2 + 90, sceneTwo, sceneTwo + 3000);
   } else if (timeInMilliseconds >= sceneTwo + 3000 && timeInMilliseconds < sceneTwo + 4000) {
@@ -806,21 +805,34 @@ function strafeRight(velocity) {
 }
 
 function setCameraPos(toPos) {
-  cameraPos = toPos;
+  cameraPos = vec3.clone(toPos);
   updateCameraVectors();
 }
 
 function setCameraPosAndLookAt(toPos, lookAt) {
-  cameraPos = toPos;
+  setCameraPos(toPos);
   vec3.sub(cameraFront, lookAt, toPos);
   recalculateRightVec();
   recalculateYawAndPitch();
   updateLookAtVector(lookAt);
+  //console.log("Yaw: " + yaw);
+  //console.log("Pitch: " + pitch);
+  //console.log("Camera Front: " + cameraFront)
 }
 
 function recalculateYawAndPitch() {
-  yaw = (vec3.angle(vec3.fromValues(cameraFront[0], 0, cameraFront[2]), vec3.fromValues(0, 0, -1)) * 180 / Math.PI) - 90;
-  pitch = 90 - (vec3.angle(vec3.fromValues(0, cameraFront[1], cameraFront[2]), upvector) * 180 / Math.PI);
+  var yawAngle = vec3.angle(vec3.fromValues(cameraFront[0], 0, cameraFront[2]), yawNeutral) * 180 / Math.PI;
+  var pitchAngle = vec3.angle(vec3.fromValues(0, cameraFront[1], mcameraFront[2]), upvector) * 180 / Math.PI;
+  if(cameraFront[0] < 0) {
+    yawAngle *= -1;
+  }
+  //console.log(cameraFront[0]);
+  //console.log("Yaw: " + yawAngle);
+  console.log("Pitch Angle: " + pitchAngle);
+  yaw = yawAngle - 90;
+  //pitch = pitchAngle - 90;
+  console.log("Pitch: " + pitch);
+
 }
 
 function updateLookAtVector(toLookAt) {
