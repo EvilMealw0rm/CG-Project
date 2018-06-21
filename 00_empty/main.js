@@ -94,6 +94,9 @@ var rightLegtTransformationNode;
 var boatMovement = vec3.fromValues(1, -1.5, 37);
 var boatTransformatioNode;
 var boatRotationY = 0;
+var boatWiggle = 0;
+var wiggle = true;
+var wiggleMax = 10;
 
 // waterfall variables
 var waterfallAnimation = 0;
@@ -479,11 +482,9 @@ function setAnimationParameters(timeInMilliseconds, deltaTime) {
 
   // Camera flight
   if (timeInMilliseconds < sceneOne) {
-    console.log("First Scene");
     animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, startPoint, checkPoint1, 0, sceneOne);
     animationPos = move3DVector(timeInMilliseconds, animationPos, cameraStartpoint, cameraCheckpoint1, 0, sceneOne);
   } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo) {
-    console.log("Second Scene");
     animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, checkPoint1, checkPoint2, sceneOne, sceneTwo);
     animationPos = move3DVector(timeInMilliseconds, animationPos, cameraCheckpoint1, cameraCheckpoint2, sceneOne, sceneTwo);
   } else if (timeInMilliseconds >= sceneTwo + 5000 && timeInMilliseconds < movieEnd) {
@@ -537,7 +538,15 @@ function moveRobot() {
 }
 
 function moveBoat() {
-  boatTransformatioNode.matrix = glm.transform({rotateY: boatRotationY, translate: [boatMovement[0], boatMovement[1], boatMovement[2]], scale: [0.3, 0.3, 0.3]});
+  if (boatWiggle >= wiggleMax || boatWiggle <= -wiggleMax) {
+    wiggle = !wiggle;
+  }
+  if (wiggle) {
+    boatWiggle += 0.1;
+  } else {
+    boatWiggle -= 0.1;
+  }
+  boatTransformatioNode.matrix = glm.transform({rotateZ: boatWiggle, rotateY: boatRotationY, translate: [boatMovement[0], boatMovement[1], boatMovement[2]], scale: [0.3, 0.3, 0.3]});
 }
 
 function convertDegreeToRadians(degree) {
@@ -546,7 +555,6 @@ function convertDegreeToRadians(degree) {
 
 function makeFloor() {
   var floor = makeRect(10, 10);
-  //TASK 3: adapt texture coordinates
   floor.texture = [0, 0,   1, 0,   1, 1,   0, 1];
   return floor;
 }
