@@ -1,8 +1,8 @@
 //the OpenGL context
 var gl = null;
 
-var canvasWidth = 1000;
-var canvasHeight = 800;
+var canvasWidth = 1600;
+var canvasHeight = 900;
 var aspectRatio = canvasWidth / canvasHeight;
 
 // camera values
@@ -62,11 +62,11 @@ var skyBoxRadius = 250;
 // POI
 var startPoint = vec3.fromValues(0, 0, 0);
 var checkPoint1 = vec3.fromValues(1, 0, 36);
-var checkPoint2 = vec3.fromValues(20, 0, 75);
+var checkPoint2 = vec3.fromValues(20, 0, 95);
 
-var cameraStartpoint = vec3.fromValues(0, 0, 3);
-var cameraCheckpoint1 = vec3.fromValues(-13, 3, 12);
-var cameraCheckpoint2 = vec3.fromValues(45, 10, 65);
+var cameraStartpoint = vec3.fromValues(-15, 10, 5);
+var cameraCheckpoint1 = vec3.fromValues(-20, 5, 25);
+var cameraCheckpoint2 = vec3.fromValues(55, 10, 85);
 var cameraCheckpoint3 = vec3.fromValues(0, 0, 0);
 
 var rotationCheck1toCheck2 = 180 / Math.PI * vec3.angle(
@@ -80,6 +80,7 @@ var legUp = true;
 var robotRotationX = 0;
 var robotRotationY = 0;
 var roboJumpPoint0 = checkPoint2;
+// TODO: correct jumping direction if final locations have been set
 var roboJumpPoint1 = vec3.add(vec3.create(), roboJumpPoint0, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * -3, 2, Math.sin(rotationCheck1toCheck2) * 3));
 var roboJumpPoint2 = vec3.sub(vec3.create(), roboJumpPoint1, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * 3, 10, Math.sin(rotationCheck1toCheck2) * -3));
 var robotTransformationNode;
@@ -94,7 +95,7 @@ var boatRotationY = 0;
 
 // waterfall
 var waterfallAnimation = 0;
-var waterfallPos = vec3.fromValues(20, 3, 80);
+var waterfallPos = vec3.fromValues(20, 3, 100);
 
 //textures
 var floorTexture;
@@ -474,15 +475,6 @@ function moveRobot() {
 
 function moveBoat() {
   boatTransformatioNode.matrix = glm.transform({rotateY: boatRotationY, translate: [boatMovement[0], boatMovement[1], boatMovement[2]], scale: [0.3, 0.3, 0.3]});
-}
-
-function calculateViewMatrix() {
-  //compute the camera's matrix
-  var eye = cameraFront;
-  var center = cameraPos;
-  var up = [0,1,0];
-  viewMatrix = mat4.lookAt(mat4.create(), eye, center, up);
-  return viewMatrix;
 }
 
 function convertDegreeToRadians(degree) {
