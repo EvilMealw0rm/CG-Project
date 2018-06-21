@@ -54,6 +54,10 @@ var framebufferHeight = 512;
 var animatedAngle = 0;
 var legRotationAngle = 0;
 var fieldOfViewInRadians = convertDegreeToRadians(30);
+var nearClipPlane = 0.01;
+var farClipPlane = 500;
+
+var skyBoxRadius = 250;
 
 // POI
 var startPoint = vec3.fromValues(0, 0, 0);
@@ -98,6 +102,7 @@ var floorTexture;
 //scenegraph nodes
 var root = null;
 var rootnofloor = null;
+
 //load the shader resources using a utility function
 loadResources({
   vs: 'shader/texture.vs.glsl',
@@ -150,9 +155,11 @@ function createSceneGraph(gl,resources){
   const root = new ShaderSGNode(createProgram(gl, resources.vs_phong, resources.fs_phong));
 
   {
+    skyboxTransformNode = new TransformationSGNode(mat4.create());
     var skybox = new ShaderSGNode(createProgram(gl, resources.vs_env, resources.fs_env), [
-      new EnvironmentSGNode(envcubetexture, 4, false,
-        new RenderSGNode(makeSphere(100)))
+      skyboxTransformNode,
+        new EnvironmentSGNode(envcubetexture, 4, false,
+          new RenderSGNode(makeSphere(skyBoxRadius)))
     ]);
     root.append(skybox);
   }
@@ -335,6 +342,8 @@ function render(timeInMilliseconds) {
   deltaTime = timeInMilliseconds - prevTime;
   prevTime = timeInMilliseconds;
 
+  skyboxUpdate();
+
   createWaterfall(timeInMilliseconds);
 
   setAnimationParameters(timeInMilliseconds, deltaTime);
@@ -344,7 +353,7 @@ function render(timeInMilliseconds) {
   moveBoat();
 
   const context = createSGContext(gl);
-  context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
+  context.projectionMatrix = mat4.perspective(mat4.create(), fieldOfViewInRadians, aspectRatio, nearClipPlane, farClipPlane);
 
   lookatVec = vec3.add(vec3.create(), cameraPos, cameraFront);
   let lookAtMatrix = mat4.lookAt(mat4.create(), cameraPos, lookatVec, upvector);
@@ -439,6 +448,10 @@ function calculateRotation(currentTime, rotationParameter, start, end, starttime
   return rotationParameter;
 }
 
+function skyboxUpdate() {
+  skyboxTransformNode.matrix = glm.translate(cameraPos[0], cameraPos[1], cameraPos[2]);
+}
+
 function moveRobot() {
   //update transformation of robot for walking animation
   robotTransformationNode.matrix = glm.transform({
@@ -467,28 +480,6 @@ function moveRobot() {
 
 function moveBoat() {
   boatTransformatioNode.matrix = glm.transform({rotateY: boatRotationY, translate: [boatMovement[0], boatMovement[1], boatMovement[2]], scale: [0.3, 0.3, 0.3]});
-}
-
-/**
- * returns a new rendering context
- * @param gl the gl context
- * @param projectionMatrix optional projection Matrix
- * @returns {ISceneGraphContext}
- */
-function createSceneGraphContext(gl, shader) {
-
-  //create a default projection matrix
-  projectionMatrix = mat4.perspective(mat4.create(), fieldOfViewInRadians, aspectRatio, 0.01, 150);
-  //set projection matrix
-  gl.uniformMatrix4fv(gl.getUniformLocation(shader, 'u_projection'), false, projectionMatrix);
-
-  return {
-    gl: gl,
-    sceneMatrix: mat4.create(),
-    viewMatrix: calculateViewMatrix(),
-    projectionMatrix: projectionMatrix,
-    shader: shader
-  };
 }
 
 function calculateViewMatrix() {
