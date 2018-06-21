@@ -1,8 +1,8 @@
 //the OpenGL context
 var gl = null;
 
-var canvasWidth = 1000;
-var canvasHeight = 800;
+var canvasWidth = 1600;
+var canvasHeight = 900;
 var aspectRatio = canvasWidth / canvasHeight;
 
 // camera values
@@ -54,15 +54,19 @@ var framebufferHeight = 512;
 var animatedAngle = 0;
 var legRotationAngle = 0;
 var fieldOfViewInRadians = convertDegreeToRadians(30);
+var nearClipPlane = 0.01;
+var farClipPlane = 500;
+
+var skyBoxRadius = 250;
 
 // POI
 var startPoint = vec3.fromValues(0, 0, 0);
 var checkPoint1 = vec3.fromValues(1, 0, 36);
-var checkPoint2 = vec3.fromValues(20, 0, 75);
+var checkPoint2 = vec3.fromValues(20, 0, 95);
 
-var cameraStartpoint = cameraPos;
-var cameraCheckpoint1 = vec3.fromValues(-13, 3, 12);
-var cameraCheckpoint2 = vec3.fromValues(45, 10, 65);
+var cameraStartpoint = vec3.fromValues(-15, 10, 5);
+var cameraCheckpoint1 = vec3.fromValues(-20, 5, 25);
+var cameraCheckpoint2 = vec3.fromValues(55, 10, 85);
 var cameraCheckpoint3 = vec3.fromValues(0, 0, 0);
 
 var rotationCheck1toCheck2 = 180 / Math.PI * vec3.angle(
@@ -76,6 +80,7 @@ var legUp = true;
 var robotRotationX = 0;
 var robotRotationY = 0;
 var roboJumpPoint0 = checkPoint2;
+// TODO: correct jumping direction if final locations have been set
 var roboJumpPoint1 = vec3.add(vec3.create(), roboJumpPoint0, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * -3, 2, Math.sin(rotationCheck1toCheck2) * 3));
 var roboJumpPoint2 = vec3.sub(vec3.create(), roboJumpPoint1, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * 3, 10, Math.sin(rotationCheck1toCheck2) * -3));
 var robotTransformationNode;
@@ -90,7 +95,7 @@ var boatRotationY = 0;
 
 // waterfall variables
 var waterfallAnimation = 0;
-var waterfallPos = vec3.fromValues(20, 3, 80);
+var waterfallPos = vec3.fromValues(20, 3, 100);
 
 //textures
 var floorTexture;
@@ -98,6 +103,7 @@ var floorTexture;
 //scenegraph nodes
 var root = null;
 var rootnofloor = null;
+
 //load the shader resources using a utility function
 loadResources({
   vs: 'shader/texture.vs.glsl',
@@ -153,9 +159,11 @@ function createSceneGraph(gl,resources){
   const root = new ShaderSGNode(createProgram(gl, resources.vs_phong, resources.fs_phong));
 
   {
+    skyboxTransformNode = new TransformationSGNode(mat4.create());
     var skybox = new ShaderSGNode(createProgram(gl, resources.vs_env, resources.fs_env), [
-      new EnvironmentSGNode(envcubetexture, 4, false,
-        new RenderSGNode(makeSphere(100)))
+      skyboxTransformNode,
+        new EnvironmentSGNode(envcubetexture, 4, false,
+          new RenderSGNode(makeSphere(skyBoxRadius)))
     ]);
     root.append(skybox);
   }
@@ -406,7 +414,7 @@ function render(timeInMilliseconds) {
   moveBoat();
 
   const context = createSGContext(gl);
-  context.projectionMatrix = mat4.perspective(mat4.create(), glm.deg2rad(30), gl.drawingBufferWidth / gl.drawingBufferHeight, 0.01, 100);
+  context.projectionMatrix = mat4.perspective(mat4.create(), fieldOfViewInRadians, aspectRatio, nearClipPlane, farClipPlane);
 
   lookatVec = vec3.add(vec3.create(), cameraPos, cameraFront);
   let lookAtMatrix = mat4.lookAt(mat4.create(), cameraPos, lookatVec, upvector);
@@ -529,37 +537,6 @@ function moveRobot() {
 
 function moveBoat() {
   boatTransformatioNode.matrix = glm.transform({rotateY: boatRotationY, translate: [boatMovement[0], boatMovement[1], boatMovement[2]], scale: [0.3, 0.3, 0.3]});
-}
-
-/**
- * returns a new rendering context
- * @param gl the gl context
- * @param projectionMatrix optional projection Matrix
- * @returns {ISceneGraphContext}
- */
-function createSceneGraphContext(gl, shader) {
-
-  //create a default projection matrix
-  projectionMatrix = mat4.perspective(mat4.create(), fieldOfViewInRadians, aspectRatio, 0.01, 150);
-  //set projection matrix
-  gl.uniformMatrix4fv(gl.getUniformLocation(shader, 'u_projection'), false, projectionMatrix);
-
-  return {
-    gl: gl,
-    sceneMatrix: mat4.create(),
-    viewMatrix: calculateViewMatrix(),
-    projectionMatrix: projectionMatrix,
-    shader: shader
-  };
-}
-
-function calculateViewMatrix() {
-  //compute the camera's matrix
-  var eye = cameraFront;
-  var center = cameraPos;
-  var up = [0,1,0];
-  viewMatrix = mat4.lookAt(mat4.create(), eye, center, up);
-  return viewMatrix;
 }
 
 function convertDegreeToRadians(degree) {
