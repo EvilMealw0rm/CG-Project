@@ -782,32 +782,35 @@ function makeCube(){
 * @returns {ISGModel}
 */
 
-function makePyramid(){
+function makePyramid(width, height, length){
+  width = width || 1;
+  height = height || 1;
+  length = length || 1;
   var position = [
       // Front face
-      0.0,  1.0,  0.0,
-      -1.0, -1.0,  1.0,
-      1.0, -1.0,  1.0,
+      0.0,  height,  0.0,
+      -width, -height,  length,
+      width, -height,  length,
       // Right face
-      0.0,  1.0,  0.0,
-      1.0, -1.0,  1.0,
-      1.0, -1.0, -1.0,
+      0.0,  height,  0.0,
+      width, -height,  length,
+      width, -height, -length,
       // Back face
-      0.0,  1.0,  0.0,
-      1.0, -1.0, -1.0,
-      -1.0, -1.0, -1.0,
+      0.0,  height,  0.0,
+      width, -height, -length,
+      -width, -height, -length,
       // Left face
-      0.0,  1.0,  0.0,
-      -1.0, -1.0, -1.0,
-      -1.0, -1.0,  1.0,
+      0.0,  height,  0.0,
+      -width, -height, -length,
+      -width, -height,  length,
 
       // bottom triangles
-      -1.0, -1.0, -1.0,
-      1.0, -1.0, -1.0,
-      1.0, -1.0, 1.0,
-      -1.0, -1.0, -1.0,
-      1.0, -1.0, 1.0,
-      -1.0, -1.0, 1.0
+      -width, -height, -length,
+      width, -height, -length,
+      width, -height, length,
+      -width, -height, -length,
+      width, -height, length,
+      -width, -height, length
   ]
   var normal = [
     // Front face
