@@ -95,7 +95,7 @@ var boatMovement = vec3.fromValues(1, -1.5, 37);
 var boatTransformatioNode;
 var boatRotationY = 0;
 
-// waterfall
+// waterfall variables
 var waterfallAnimation = 0;
 var waterfallPos = vec3.fromValues(20, 3, 100);
 
@@ -130,6 +130,9 @@ loadResources({
   water_texture: 'models/water_texture.jpg',
   boat_texture: 'models/boattex.jpg',
   waterfall_texture: 'models/waterfall_texture.png',
+  brick_texture: 'models/brickwall_texture.jpg',
+  roof_texture: 'models/roof_texture.png',
+  door_texture: 'models/door_texture.jpg',
   boat: 'models/OldBoat.obj'
 }).then(function (resources /*an object containing our keys with the loaded resources*/) {
   init(resources);
@@ -206,6 +209,7 @@ function createSceneGraph(gl,resources){
                   new RenderSGNode(makeFloor())));
   animatedTexture.append(waterfall);
 
+  createHouse(root,grass, resources);
 
   waterParticleNode = new TextureSGNode(resources.water_particle);
   let waterfallShaderNode =new ShaderSGNode(createProgram(gl, resources.vs_particle, resources.fs_particle));
@@ -214,6 +218,7 @@ function createSceneGraph(gl,resources){
            waterParticleNode));
 
   createRobot(root, resources);
+
 
   return root;
 }
@@ -327,6 +332,63 @@ function createRobot(rootNode, resources) {
   leftArmTransformationNode = new TransformationSGNode(glm.transform({translate: [-0.4,1.5,0], scale: [0.6,0.1,0.1]}),cubeNode);
   robotTransformationNode.append(leftArmTransformationNode);
 
+}
+
+function createHouse(phongroot,rootNode, resources){
+  let house =new AdvancedTextureSGNode(resources.brick_texture);
+  rootNode.append(house);
+
+  let backwall =  new TransformationSGNode(glm.transform({translate: [0,5,-30] }),
+    new RenderSGNode(makeRect(10,10)));
+  house.append(backwall)
+
+  let leftwall = new TransformationSGNode(glm.transform({translate: [-10,5,-20], rotateY: 90}),
+    	new RenderSGNode(makeRect(10,10)));
+  house.append(leftwall);
+
+  let rightwall = new TransformationSGNode(glm.transform({translate: [10,5,-20], rotateY: 90}),
+    new RenderSGNode(makeRect(10,10)));
+  house.append(rightwall);
+
+  let roof = new AdvancedTextureSGNode(resources.roof_texture,
+    new TransformationSGNode(glm.transform({translate: [0,25,-20]}),
+    new RenderSGNode(makePyramid(10,10,10))));
+  rootNode.append(roof);
+
+  let frontwall1 = new TransformationSGNode(glm.transform({translate: [7,5,-10]}),
+    new RenderSGNode(makeRect(3,10)));
+  house.append(frontwall1);
+
+  let frontwall2 = new TransformationSGNode(glm.transform({translate: [-3,11,-10]}),
+    new RenderSGNode(makeRect(7,4)));
+  house.append(frontwall2);
+
+  let frontwall3 = new TransformationSGNode(glm.transform({translate: [-5,1,-10]}),
+    new RenderSGNode(makeRect(5,3)));
+  house.append(frontwall3);
+
+  let frontwall4 = new TransformationSGNode(glm.transform({translate: [-8.5,5.5,-10]}),
+    new RenderSGNode(makeRect(1.5,1.5)));
+  house.append(frontwall4);
+
+  let frontwall5 = new TransformationSGNode(glm.transform({translate: [-1.5,5.5,-10]}),
+    new RenderSGNode(makeRect(1.5,1.5)));
+  house.append(frontwall5);
+
+  let door = new AdvancedTextureSGNode(resources.door_texture,
+    new TransformationSGNode(glm.transform({translate: [2,0,-10]}),
+    new RenderSGNode(makeRect(2,7))));
+  rootNode.append(door);
+
+  let glass = new MaterialNode(new TransformationSGNode(glm.transform({translate: [-5,5.5,-10]}),
+    new RenderSGNode(makeRect(2,1.5))))
+
+  glass.ambient = [0.2, 0.2, 0.2, 1];
+  glass.diffuse = [0.8, 0.8, 0.8, 1];
+  glass.specular = [0.1, 0.1, 0.1, 1];
+  glass.shininess = 0.3;
+
+  phongroot.append(glass);
 }
 
 /**
