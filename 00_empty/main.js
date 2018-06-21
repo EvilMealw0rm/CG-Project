@@ -83,8 +83,8 @@ var robotRotationX = 0;
 var robotRotationY = 0;
 var roboJumpPoint0 = checkPoint2;
 // TODO: correct jumping direction if final locations have been set
-var roboJumpPoint1 = vec3.add(vec3.create(), roboJumpPoint0, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * -3, 2, Math.sin(rotationCheck1toCheck2) * 3));
-var roboJumpPoint2 = vec3.sub(vec3.create(), roboJumpPoint1, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * 3, 10, Math.sin(rotationCheck1toCheck2) * -3));
+var roboJumpPoint1 = vec3.add(vec3.create(), roboJumpPoint0, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * 3, 2, Math.sin(rotationCheck1toCheck2) * -3));
+var roboJumpPoint2 = vec3.sub(vec3.create(), roboJumpPoint1, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * -3, 10, Math.sin(rotationCheck1toCheck2) * 3));
 var robotTransformationNode;
 var headTransformationNode;
 var leftLegTransformationNode;
@@ -479,9 +479,11 @@ function setAnimationParameters(timeInMilliseconds, deltaTime) {
 
   // Camera flight
   if (timeInMilliseconds < sceneOne) {
+    console.log("First Scene");
     animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, startPoint, checkPoint1, 0, sceneOne);
     animationPos = move3DVector(timeInMilliseconds, animationPos, cameraStartpoint, cameraCheckpoint1, 0, sceneOne);
   } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo) {
+    console.log("Second Scene");
     animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, checkPoint1, checkPoint2, sceneOne, sceneTwo);
     animationPos = move3DVector(timeInMilliseconds, animationPos, cameraCheckpoint1, cameraCheckpoint2, sceneOne, sceneTwo);
   } else if (timeInMilliseconds >= sceneTwo + 5000 && timeInMilliseconds < movieEnd) {
@@ -877,24 +879,16 @@ function setCameraPosAndLookAt(toPos, lookAt) {
   recalculateRightVec();
   recalculateYawAndPitch();
   updateLookAtVector(lookAt);
-  //console.log("Yaw: " + yaw);
-  //console.log("Pitch: " + pitch);
-  //console.log("Camera Front: " + cameraFront)
 }
 
 function recalculateYawAndPitch() {
   var yawAngle = vec3.angle(vec3.fromValues(cameraFront[0], 0, cameraFront[2]), yawNeutral) * 180 / Math.PI;
-  var pitchAngle = vec3.angle(vec3.fromValues(0, cameraFront[1], cameraFront[2]), upvector) * 180 / Math.PI;
+  var pitchAngle = vec3.angle(vec3.fromValues(cameraFront[0], cameraFront[1], 0), upvector) * 180 / Math.PI;
   if(cameraFront[0] < 0) {
     yawAngle *= -1;
   }
-  //console.log(cameraFront[0]);
-  //console.log("Yaw: " + yawAngle);
-  console.log("Pitch Angle: " + pitchAngle);
   yaw = yawAngle - 90;
-  //pitch = pitchAngle - 90;
-  console.log("Pitch: " + pitch);
-
+  pitch = 90 - pitchAngle;
 }
 
 function updateLookAtVector(toLookAt) {
