@@ -64,7 +64,7 @@ var startPoint = vec3.fromValues(0, 0, 0);
 var checkPoint1 = vec3.fromValues(1, 0, 36);
 var checkPoint2 = vec3.fromValues(20, 0, 75);
 
-var cameraStartpoint = cameraPos;
+var cameraStartpoint = vec3.fromValues(0, 0, 3);
 var cameraCheckpoint1 = vec3.fromValues(-13, 3, 12);
 var cameraCheckpoint2 = vec3.fromValues(45, 10, 65);
 var cameraCheckpoint3 = vec3.fromValues(0, 0, 0);
@@ -342,8 +342,6 @@ function render(timeInMilliseconds) {
   deltaTime = timeInMilliseconds - prevTime;
   prevTime = timeInMilliseconds;
 
-  skyboxUpdate();
-
   createWaterfall(timeInMilliseconds);
 
   setAnimationParameters(timeInMilliseconds, deltaTime);
@@ -446,10 +444,6 @@ function move3DVector(currentTime, vectorToMove, start, end, starttime, endtime)
 function calculateRotation(currentTime, rotationParameter, start, end, starttime, endtime) {
   rotationParameter = start + (currentTime - starttime) * ((end - start) / (endtime - starttime));
   return rotationParameter;
-}
-
-function skyboxUpdate() {
-  skyboxTransformNode.matrix = glm.translate(cameraPos[0], cameraPos[1], cameraPos[2]);
 }
 
 function moveRobot() {
