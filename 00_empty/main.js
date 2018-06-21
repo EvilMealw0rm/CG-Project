@@ -209,7 +209,7 @@ function createSceneGraph(gl,resources){
                   new RenderSGNode(makeFloor())));
   animatedTexture.append(waterfall);
 
-  createHouse(root,grass, resources);
+  createHouse(root, grass, resources);
 
   waterParticleNode = new TextureSGNode(resources.water_particle);
   let waterfallShaderNode =new ShaderSGNode(createProgram(gl, resources.vs_particle, resources.fs_particle));
@@ -334,7 +334,7 @@ function createRobot(rootNode, resources) {
 
 }
 
-function createHouse(phongroot,rootNode, resources){
+function createHouse(phongroot, rootNode, resources){
   let house =new AdvancedTextureSGNode(resources.brick_texture);
   rootNode.append(house);
 
@@ -884,7 +884,7 @@ function setCameraPosAndLookAt(toPos, lookAt) {
 
 function recalculateYawAndPitch() {
   var yawAngle = vec3.angle(vec3.fromValues(cameraFront[0], 0, cameraFront[2]), yawNeutral) * 180 / Math.PI;
-  var pitchAngle = vec3.angle(vec3.fromValues(0, cameraFront[1], mcameraFront[2]), upvector) * 180 / Math.PI;
+  var pitchAngle = vec3.angle(vec3.fromValues(0, cameraFront[1], cameraFront[2]), upvector) * 180 / Math.PI;
   if(cameraFront[0] < 0) {
     yawAngle *= -1;
   }
