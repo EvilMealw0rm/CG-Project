@@ -252,8 +252,10 @@ function createSceneGraph(gl,resources){
     scale: 2.5
     }), waterParticleNode));
 
-  createRobot(root, resources);
+  let robotTextureNode = new AdvancedTextureSGNode(resources.roboter_texture);
+  grass.append(robotTextureNode);
 
+  createRobot(robotTextureNode, resources);
 
   return root;
 }
@@ -296,32 +298,21 @@ function initCubeMap(resources) {
 * Creates the robot
 */
 function createRobot(rootNode, resources) {
-  cubeNode = new MaterialNode([new RenderSGNode(makeCube(2,2,2))]);
-  cubeNode.ambient = [0.24725, 0.1995, 0.0745, 1];
-  cubeNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
-  cubeNode.specular = [0.628281, 0.555802, 0.366065, 1];
-  cubeNode.shininess = 0.4;
+  cubeNode = new RenderSGNode(makeCube(2,2,2));
 
-  pyramidNode = new MaterialNode([new RenderSGNode(makePyramid())]);
-  // turquoise
-  pyramidNode.ambient = [0.1,	0.18725,	0.1745, 1];
-  pyramidNode.diffuse = [0.396,	0.74151,	0.69102, 1];
-  pyramidNode.specular = [0.297254,	0.30829,	0.306678, 1];
-  pyramidNode.shininess = 0.1;
+  pyramidNode = new RenderSGNode(makePyramid());
 
   //transformations of whole body
   bodyNode =  new TransformationSGNode(glm.transform({
     translate: [0.3,0.8,0]
   }), pyramidNode);
-  robotTransformationNode =new TransformationSGNode(mat4.create(),[bodyNode]);
+  
+  robotTransformationNode = new TransformationSGNode(mat4.create(),[bodyNode]);
   rootNode.append(robotTransformationNode);
 
   //head
-  sphereNode = new MaterialNode([new RenderSGNode(makeSphere(.2,10,10))]);
-  sphereNode.ambient = [0.1,	0.18725,	0.1745, 1];
-  sphereNode.diffuse = [0.396,	0.74151,	0.69102, 1];
-  sphereNode.specular = [0.297254,	0.30829,	0.306678, 1];
-  sphereNode.shininess = 0.1;
+  sphereNode = new RenderSGNode(makeSphere(.2,10,10));
+
   headTransformationNode = (new TransformationSGNode(glm.transform({
     translate: [0.3, 2.2, 0],
     scale: [2, 2, 2]
