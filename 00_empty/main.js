@@ -383,7 +383,7 @@ function createHouse(phongroot, rootNode, resources){
     new RenderSGNode(makeRect(2,7))));
   rootNode.append(door);
 
-  let glass = new MaterialNode(new TransformationSGNode(glm.transform({translate: [-5,5.5,-10]}),
+  let glass = new AlphaNode(new TransformationSGNode(glm.transform({translate: [-5,5.5,-10]}),
     new RenderSGNode(makeRect(2,1.5))))
 
   glass.ambient = [0.2, 0.2, 0.2, 1];
@@ -404,7 +404,8 @@ function render(timeInMilliseconds) {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   gl.enable(gl.DEPTH_TEST);
-  //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.useProgram(root.program);
 
   deltaTime = timeInMilliseconds - prevTime;
@@ -600,6 +601,21 @@ class LightNode extends TransformationSGNode {
     this.matrix = glm.translate(this.position[0], this.position[1], this.position[2]);
 
     //render children
+    super.render(context);
+  }
+}
+
+class AlphaNode extends MaterialSGNode{
+  constructor(alpha,children){
+    super(children);
+  }
+
+  render(context){
+    const gl = context.gl,
+      shader = context.shader;
+    gl.uniform1f(gl.getUniformLocation(shader, 'u_alpha'),1);
+    gl.uniform1i(gl.getUniformLocation(shader, 'u_enableBlending'), 1);
+
     super.render(context);
   }
 }
