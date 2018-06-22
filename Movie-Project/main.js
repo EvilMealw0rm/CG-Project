@@ -306,7 +306,7 @@ function createRobot(rootNode, resources) {
   bodyNode =  new TransformationSGNode(glm.transform({
     translate: [0.3,0.8,0]
   }), pyramidNode);
-  
+
   robotTransformationNode = new TransformationSGNode(mat4.create(),[bodyNode]);
   rootNode.append(robotTransformationNode);
 
@@ -404,7 +404,6 @@ function createHouse(phongroot, rootNode, resources){
   glass.ambient = [0.2, 0.2, 0.2, 1];
   glass.diffuse = [0.8, 0.8, 0.8, 1];
   glass.specular = [0.1, 0.1, 0.1, 1];
-  glass.emission = [0, 0, 0, 0];
   glass.shininess = 0.3;
 
   phongroot.append(glass);
@@ -735,17 +734,17 @@ class EnvironmentSGNode extends SGNode {
 
 
 class AlphaNode extends MaterialSGNode{
-  constructor(alpha,children){
+  constructor(children){
     super(children);
   }
 
   render(context){
+    super.render(context);
     const gl = context.gl,
       shader = context.shader;
-    gl.uniform1f(gl.getUniformLocation(shader, 'u_alpha'),1);
+    gl.uniform1f(gl.getUniformLocation(shader, 'u_alpha'),0.6);
     gl.uniform1i(gl.getUniformLocation(shader, 'u_enableBlending'), 1);
 
-    super.render(context);
   }
 }
 
