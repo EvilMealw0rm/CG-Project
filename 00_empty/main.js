@@ -15,9 +15,9 @@ var yaw = -90;
 var sensitivity = 0.05;
 
 var yawNeutral = vec3.clone(cameraFront);
-
 var lookatVec = vec3.fromValues(0, 0, 0);
 
+// rotation for the sun
 var rotateLight;
 
 var deltaTime = 0;
@@ -27,6 +27,13 @@ var prevTime = 0;
 var sceneOne = 10000;
 var sceneTwo = 20000;
 var movieEnd = 30000;
+
+var doorOpeningTime = 4000;
+var boatRotationTime = 3000;
+var turnToJumpTime = 3000;
+var jumpUpTime = turnToJumpTime + 1000;
+var fallDownTime = jumpUpTime + 2000;
+var boatSinkingTime = 4000;
 
 // animation
 var autoPilot = true;
@@ -38,7 +45,7 @@ var animationRunning = true;
 // constant upvector
 const upvector = vec3.fromValues(0, 1, 0);
 
-//rendering context
+// rendering context
 var context;
 
 // particles
@@ -48,18 +55,19 @@ var particles = [];
 var particleNodes = [];
 var waterParticleNode;
 
-//framebuffer variables
+// framebuffer variables
 var renderTargetFramebuffer;
 var framebufferWidth = 512;
 var framebufferHeight = 512;
 
-//camera and projection settings
+// camera and projection settings
 var animatedAngle = 0;
 var legRotationAngle = 0;
 var fieldOfViewInRadians = convertDegreeToRadians(30);
 var nearClipPlane = 0.01;
 var farClipPlane = 500;
 
+// size of skybox
 var skyBoxRadius = 250;
 
 // POI
@@ -77,13 +85,12 @@ var rotationCheck1toCheck2 = 180 / Math.PI * vec3.angle(
   [checkPoint2[0], 0 , checkPoint2[2]]);
 
 // robot variables
-var robotMoving = true;
+var robotMoving = false;
 var robotMovement = vec3.clone(startPoint);
 var legUp = true;
 var robotRotationX = 0;
 var robotRotationY = 0;
 var roboJumpPoint0 = checkPoint2;
-// TODO: correct jumping direction if final locations have been set
 var roboJumpPoint1 = vec3.add(vec3.create(), roboJumpPoint0, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * 3, 3, Math.sin(rotationCheck1toCheck2) * -3));
 var roboJumpPoint2 = vec3.sub(vec3.create(), roboJumpPoint1, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * -3, 10, Math.sin(rotationCheck1toCheck2) * 3));
 var robotTransformationNode;
@@ -105,7 +112,7 @@ var waterfallPos = vec3.fromValues(20, 3, 100);
 
 //door vaiables
 var door;
-var doorRotationZ = 0;
+var doorRotationY = 0;
 
 //textures
 var floorTexture;
@@ -113,7 +120,9 @@ var floorTexture;
 //scenegraph nodes
 var root = null;
 
-//load the shader resources using a utility function
+/**
+* load the shaders, textures and models using a utility function
+*/
 loadResources({
   vs: 'shader/texture.vs.glsl',
   fs: 'shader/texture.fs.glsl',
@@ -165,6 +174,9 @@ function init(resources) {
   initInteraction(gl.canvas);
 }
 
+/**
+* Creates the scenegraph
+*/
 function createSceneGraph(gl,resources){
   const root = new ShaderSGNode(createProgram(gl, resources.vs_phong, resources.fs_phong));
 
@@ -251,6 +263,9 @@ function createLightSphere(radius, resources) {
   ]);
 }
 
+/**
+* Initializes the cubemap
+*/
 function initCubeMap(resources) {
   //create the texture
   envcubetexture = gl.createTexture();
@@ -278,37 +293,9 @@ function initCubeMap(resources) {
   gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
 }
 
-//a scene graph node for setting environment mapping parameters
-class EnvironmentSGNode extends SGNode {
-
-  constructor(envtexture, textureunit, doReflect , children ) {
-      super(children);
-      this.envtexture = envtexture;
-      this.textureunit = textureunit;
-      this.doReflect = doReflect;
-  }
-
-  render(context)
-  {
-    //set additional shader parameters
-    let invView3x3 = mat3.fromMat4(mat3.create(), context.invViewMatrix); //reduce to 3x3 matrix since we only process direction vectors (ignore translation)
-    gl.uniformMatrix3fv(gl.getUniformLocation(context.shader, 'u_invView'), false, invView3x3);
-    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_texCube'), this.textureunit);
-    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_useReflection'), this.doReflect)
-
-    //activate and bind texture
-    gl.activeTexture(gl.TEXTURE0 + this.textureunit);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.envtexture);
-
-    //render children
-    super.render(context);
-
-    //clean up
-    gl.activeTexture(gl.TEXTURE0 + this.textureunit);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
-  }
-}
-
+/**
+* Creates the robot
+*/
 function createRobot(rootNode, resources) {
   cubeNode = new MaterialNode([new RenderSGNode(makeCube(2,2,2))]);
   cubeNode.ambient = [0.24725, 0.1995, 0.0745, 1];
@@ -372,6 +359,9 @@ function createRobot(rootNode, resources) {
   robotTransformationNode.append(leftArmTransformationNode);
 }
 
+/**
+* Creates the house
+*/
 function createHouse(phongroot, rootNode, resources){
   let house =new AdvancedTextureSGNode(resources.brick_texture);
   rootNode.append(house);
@@ -449,17 +439,19 @@ function render(timeInMilliseconds) {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.useProgram(root.program);
 
-  deltaTime = timeInMilliseconds - prevTime;
-  prevTime = timeInMilliseconds;
-
+  // Waterfall updates
   createWaterfall(timeInMilliseconds);
 
-  setAnimationParameters(timeInMilliseconds, deltaTime);
+  // Do the animations
+  setAnimationParameters(timeInMilliseconds);
 
+  // Remember to open the door
   moveDoor();
 
+  // Remember to move the robot
   moveRobot();
 
+  // Remember to move the boat
   moveBoat();
 
   const context = createSGContext(gl);
@@ -478,76 +470,92 @@ function render(timeInMilliseconds) {
   root.render(context);
   //request another render call as soon as possible
   requestAnimationFrame(render);
-
-  //animate based on elapsed time
-  animatedAngle = timeInMilliseconds/10;
 }
 
-function setAnimationParameters(timeInMilliseconds, deltaTime) {
+/**
+* Animation magic happens in this function
+* Moving objects and animate cameraflight
+*/
+function setAnimationParameters(timeInMilliseconds) {
 
   // rotate like a flat earth sun (but in reality the earth is a geoid)
   rotateLight.matrix = glm.transform({rotateY: timeInMilliseconds * 0.025});
 
+
   if (!animationRunning) {
+    displayText("Movie ended");
+    autoPilot = false;
     return;
   }
 
-  // errorhandling for 1st call where deltaTime = NaN
-  if (isNaN(deltaTime)) {
-    deltaTime = 0.001;
-  }
-
-  var timeInSeconds = timeInMilliseconds / 1000;
-  var stepSize = 0;
-
   // Robot movement
-  if (timeInMilliseconds < 2000) {
+  if (timeInMilliseconds < doorOpeningTime) {
     //door movement
-    doorRotationZ = calculateRotation(timeInMilliseconds, doorRotationZ, 90, 350, 0, 2000);
-  } else if (timeInMilliseconds >= 2000 && timeInMilliseconds < sceneOne) {
-    robotMovement = move3DVector(timeInMilliseconds, robotMovement, startPoint, checkPoint1, 2000, sceneOne);
-
-  } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo - 7000) {
+    doorRotationY = calculateRotation(timeInMilliseconds, doorRotationY, 90, 350, 0, doorOpeningTime);
+  } else if (timeInMilliseconds >= doorOpeningTime && timeInMilliseconds < sceneOne) {
+    // roboter walks to boat
+    robotMoving = true;
+    robotMovement = move3DVector(timeInMilliseconds, robotMovement, startPoint, checkPoint1, doorOpeningTime, sceneOne);
+  } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo - sceneOne + boatRotationTime) {
+    // roboter and boat turn to waterfall
     robotMoving = false;
-
-    boatRotationY = calculateRotation(timeInMilliseconds, boatRotationY, 0, rotationCheck1toCheck2, sceneOne, sceneOne + 3000);
-    robotRotationY = calculateRotation(timeInMilliseconds, robotRotationY, 0, rotationCheck1toCheck2, sceneOne, sceneOne + 3000);
-  } else if (timeInMilliseconds >= sceneOne + 3000 && timeInMilliseconds < sceneTwo) {
+    boatRotationY = calculateRotation(timeInMilliseconds, boatRotationY, 0, rotationCheck1toCheck2, sceneOne, sceneOne + boatRotationTime);
+    robotRotationY = calculateRotation(timeInMilliseconds, robotRotationY, 0, rotationCheck1toCheck2, sceneOne, sceneOne + boatRotationTime);
+  } else if (timeInMilliseconds >= sceneOne + boatRotationTime && timeInMilliseconds < sceneTwo) {
+    // boat and roboter move to waterfall
     robotMoving = false;
     boatMovement = move3DVector(timeInMilliseconds, boatMovement,
       [checkPoint1[0], checkPoint1[1] - 1.25, checkPoint1[2]],
       [checkPoint2[0], checkPoint2[1] - 1.25, checkPoint2[2]],
-      sceneOne + 3000, sceneTwo);
+      sceneOne + boatRotationTime, sceneTwo);
     robotMovement = move3DVector(timeInMilliseconds, robotMovement, checkPoint1,
-      checkPoint2, sceneOne + 3000, sceneTwo);
-  } else if (timeInMilliseconds >= sceneTwo && timeInMilliseconds < sceneTwo + 3000) {
-    robotRotationY = calculateRotation(timeInMilliseconds, robotRotationY, rotationCheck1toCheck2, rotationCheck1toCheck2 + 90, sceneTwo, sceneTwo + 3000);
-  } else if (timeInMilliseconds >= sceneTwo + 3000 && timeInMilliseconds < sceneTwo + 4000) {
-    robotMovement = move3DVector(timeInMilliseconds, robotMovement, roboJumpPoint0, roboJumpPoint1, sceneTwo + 3000, sceneTwo + 4000);
-    //robotRotationX = calculateRotation(timeInMilliseconds, robotRotationX, 0, 90, sceneTwo + 3000, sceneTwo + 4000);
-  } else if (timeInMilliseconds >= sceneTwo + 4000 && timeInMilliseconds < sceneTwo + 6000) {
-    robotMovement = move3DVector(timeInMilliseconds, robotMovement, roboJumpPoint1, roboJumpPoint2, sceneTwo + 4000, sceneTwo + 6000);
+      checkPoint2, sceneOne + boatRotationTime, sceneTwo);
+  } else if (timeInMilliseconds >= sceneTwo && timeInMilliseconds < sceneTwo + turnToJumpTime) {
+    // roboter turns to jump
+    displayText("Special effect: Particles")
+    robotRotationY = calculateRotation(timeInMilliseconds, robotRotationY, rotationCheck1toCheck2, rotationCheck1toCheck2 + 90, sceneTwo, sceneTwo + turnToJumpTime);
+  } else if (timeInMilliseconds >= sceneTwo + turnToJumpTime && timeInMilliseconds < sceneTwo + jumpUpTime) {
+    // roboter jumps up
+    displayText("Special effect: Particles")
+    robotMovement = move3DVector(timeInMilliseconds, robotMovement, roboJumpPoint0, roboJumpPoint1, sceneTwo + turnToJumpTime, sceneTwo + jumpUpTime);
+  } else if (timeInMilliseconds >= sceneTwo + jumpUpTime && timeInMilliseconds < sceneTwo + fallDownTime) {
+    // roboter jumps down
+    displayText("Special effect: Particles")
+    robotMovement = move3DVector(timeInMilliseconds, robotMovement, roboJumpPoint1, roboJumpPoint2, sceneTwo + jumpUpTime, sceneTwo + fallDownTime);
+  } else if (timeInMilliseconds >= sceneTwo + fallDownTime && timeInMilliseconds < movieEnd) {
+    // boat sinks under water
+    displayText("Special effect: Particles")
+    boatMovement = move3DVector(timeInMilliseconds, boatMovement,
+      [checkPoint2[0], checkPoint2[1] - 1.25, checkPoint2[2]],
+      [checkPoint2[0], checkPoint2[1] - 4.25, checkPoint2[2]],
+      sceneTwo + fallDownTime, movieEnd);
   } else if (timeInMilliseconds >= movieEnd) {
-    robotMoving = false;
+    // movie over
+    animationRunning = false;
   }
 
   // Camera flight
-  if (timeInMilliseconds < 2000) {
+  if (timeInMilliseconds < doorOpeningTime) {
     // wait for door to open
     animationLookAt = vec3.clone(startPoint);
     animationPos = vec3.clone(cameraStartpoint);
-  } else if (timeInMilliseconds >= 2000 && timeInMilliseconds < sceneOne) {
-    animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, startPoint, checkPoint1, 2000, sceneOne);
-    animationPos = move3DVector(timeInMilliseconds, animationPos, cameraStartpoint, cameraCheckpoint1, 2000, sceneOne);
-  } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo - 7000) {
+  } else if (timeInMilliseconds >= doorOpeningTime && timeInMilliseconds < sceneOne) {
+    // follow roboter to boat
+    animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, startPoint, checkPoint1, doorOpeningTime, sceneOne);
+    animationPos = move3DVector(timeInMilliseconds, animationPos, cameraStartpoint, cameraCheckpoint1, doorOpeningTime, sceneOne);
+  } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo - sceneOne + boatRotationTime) {
+    // wait for boat and roboter to move
     animationLookAt = vec3.clone(checkPoint1);
     animationPos = vec3.clone(cameraCheckpoint1);
-  } else if (timeInMilliseconds >= sceneOne + 3000 && timeInMilliseconds < sceneTwo) {
-    animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, checkPoint1, checkPoint2, sceneOne + 3000, sceneTwo);
-    animationPos = move3DVector(timeInMilliseconds, animationPos, cameraCheckpoint1, cameraCheckpoint2, sceneOne + 3000, sceneTwo);
+  } else if (timeInMilliseconds >= sceneOne + turnToJumpTime && timeInMilliseconds < sceneTwo) {
+    // fly to final position
+    animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, checkPoint1, checkPoint2, sceneOne + turnToJumpTime, sceneTwo);
+    animationPos = move3DVector(timeInMilliseconds, animationPos, cameraCheckpoint1, cameraCheckpoint2, sceneOne + turnToJumpTime, sceneTwo);
   } else if (timeInMilliseconds >= sceneTwo + 5000 && timeInMilliseconds < movieEnd) {
-
+    // have a nice cold pint and wait for all of this to blow over ;)
   }
+
+  // set cameraposition if autoPilot is active
   if (autoPilot) {
     setCameraPosAndLookAt(animationPos, animationLookAt);
   }
@@ -564,11 +572,17 @@ function move3DVector(currentTime, vectorToMove, start, end, starttime, endtime)
   return vectorToMove;
 }
 
+/**
+* Increases a value from start to end beginning at starttime and ending at endtime
+*/
 function calculateRotation(currentTime, rotationParameter, start, end, starttime, endtime) {
   rotationParameter = start + (currentTime - starttime) * ((end - start) / (endtime - starttime));
   return rotationParameter;
 }
 
+/**
+* Advanced rectangle to have the turning point at the edge of the rectangle
+*/
 function makeAdvancedRectangle(length, width, height, offset) {
     width = width || 1;
     height = height || 1;
@@ -586,14 +600,20 @@ function makeAdvancedRectangle(length, width, height, offset) {
     };
 }
 
+/**
+* Opens the door if rotation value has changed
+*/
 function moveDoor(){
   door.matrix = glm.transform({
-      rotateY: doorRotationZ,
+      rotateY: doorRotationY,
       translate: [4,-1.5,-10]
   })
 
 }
 
+/**
+* Moves the robot and simulates walking
+*/
 function moveRobot() {
   //update transformation of robot for walking animation
   robotTransformationNode.matrix = glm.transform({
@@ -620,6 +640,9 @@ function moveRobot() {
   }
 }
 
+/**
+* Moves a boat and adds a wiggle to simulate waves
+*/
 function moveBoat() {
   if (boatWiggle >= wiggleMax || boatWiggle <= -wiggleMax) {
     wiggle = !wiggle;
@@ -641,6 +664,7 @@ function makeFloor() {
   floor.texture = [0, 0,   1, 0,   1, 1,   0, 1];
   return floor;
 }
+
 class LightNode extends TransformationSGNode {
 
   constructor(position, children) {
@@ -687,6 +711,40 @@ class LightNode extends TransformationSGNode {
   }
 }
 
+/**
+* a scene graph node for setting environment mapping parameters
+*/
+class EnvironmentSGNode extends SGNode {
+
+  constructor(envtexture, textureunit, doReflect , children ) {
+      super(children);
+      this.envtexture = envtexture;
+      this.textureunit = textureunit;
+      this.doReflect = doReflect;
+  }
+
+  render(context)
+  {
+    //set additional shader parameters
+    let invView3x3 = mat3.fromMat4(mat3.create(), context.invViewMatrix); //reduce to 3x3 matrix since we only process direction vectors (ignore translation)
+    gl.uniformMatrix3fv(gl.getUniformLocation(context.shader, 'u_invView'), false, invView3x3);
+    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_texCube'), this.textureunit);
+    gl.uniform1i(gl.getUniformLocation(context.shader, 'u_useReflection'), this.doReflect)
+
+    //activate and bind texture
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.envtexture);
+
+    //render children
+    super.render(context);
+
+    //clean up
+    gl.activeTexture(gl.TEXTURE0 + this.textureunit);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+  }
+}
+
+
 class AlphaNode extends MaterialSGNode{
   constructor(alpha,children){
     super(children);
@@ -701,6 +759,7 @@ class AlphaNode extends MaterialSGNode{
     super.render(context);
   }
 }
+
 class MaterialNode extends SGNode {
 
   constructor(children) {
@@ -735,7 +794,9 @@ class MaterialNode extends SGNode {
   }
 }
 
-//a scene graph node for setting texture parameters
+/**
+* A scenegraph node for setting texture parameters
+*/
 class TextureSGNode extends AdvancedTextureSGNode {
   constructor(image, children) {
         super(image, children);
@@ -749,7 +810,9 @@ class TextureSGNode extends AdvancedTextureSGNode {
     }
 }
 
-//a scene graph node for setting texture animation parameter
+/**
+* A scene graph node for setting texture animation parameter
+*/
 class AnimatedTextureSGNode extends AdvancedTextureSGNode {
   constructor(image, children) {
         super(image, children);
@@ -760,6 +823,7 @@ class AnimatedTextureSGNode extends AdvancedTextureSGNode {
 
     }
 }
+
 /**
 * Particle node
 */
@@ -831,7 +895,9 @@ function createParticles(timeInMilliseconds) {
 }
 
 
-// control user input
+/**
+* Control user input
+*/
 function initInteraction(canvas) {
   const mouse = {
     pos: { x : 0, y : 0},
@@ -852,7 +918,7 @@ function initInteraction(canvas) {
   canvas.addEventListener('mousemove', function(event) {
     const pos = toPos(event);
     const delta = { x : mouse.pos.x - pos.x, y: mouse.pos.y - pos.y };
-    if (mouse.leftButtonDown) {
+    if (mouse.leftButtonDown && !autoPilot) {
       //add the relative movement of the mouse to the rotation variables
   		moveWithMouse(delta.x, delta.y);
     }
@@ -866,8 +932,9 @@ function initInteraction(canvas) {
   document.addEventListener('keypress', function(event) {
     //https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent
 
-    console.log(event.code + " key pressed");
+    //console.log(event.code + " key pressed");
 
+    // reacto to the user input, only move camera when autoPilot is false
     let velocity = 1;
     switch (event.code) {
       case "KeyR":
@@ -910,6 +977,9 @@ function initInteraction(canvas) {
 
 // A lot of camera functions
 
+/**
+* Creates the waterfall with particles
+*/
 function updateCameraVectors() {
   // calc new front vec
   cameraFront[0] = Math.cos(glm.deg2rad(yaw)) * Math.cos(glm.deg2rad(pitch));
@@ -920,12 +990,16 @@ function updateCameraVectors() {
   recalculateRightVec();
 }
 
+/**
+* Resets the camera to origin
+*/
 function resetCamera() {
-  pitch = 0;
-  yaw = -90;
-  setCameraPos(vec3.fromValues(0, 2, 1));
+  setCameraPosAndLookAt(vec3.clone(cameraStartpoint), vec3.clone(startPoint));
 }
 
+/**
+* Reaction if the camera was moved with the mouse
+*/
 function moveWithMouse(deltaX, deltaY) {
   deltaX *= sensitivity;
   deltaY *= sensitivity;
@@ -944,41 +1018,53 @@ function moveWithMouse(deltaX, deltaY) {
   updateCameraVectors();
 }
 
+/**
+* Recalculates the right vector to be able to strafe accordingly
+*/
 function recalculateRightVec() {
   vec3.normalize(cameraRight, vec3.cross(vec3.create(), cameraFront, upvector));
 }
 
-function turnCameraHorizontal(increment, value) {
-  yaw += increment * value;
-  updateCameraVectors();
-}
-
-function turnCameraVertical(increment, value) {
-  pitch += increment * value;
-  updateCameraVectors();
-}
-
+/**
+* Moves the camera forwards
+*/
 function moveForward(velocity) {
   vec3.add(cameraPos, cameraPos, cameraFront);
 }
 
+/**
+* Moves the camera backwards
+*/
 function moveBackward(velocity) {
   vec3.sub(cameraPos, cameraPos, cameraFront);
 }
 
+/**
+* Strafe left with the camera
+*/
 function strafeLeft(velocity) {
   vec3.sub(cameraPos, cameraPos, cameraRight);
 }
 
+/**
+* Strafe right with the camera
+*/
 function strafeRight(velocity) {
   vec3.add(cameraPos, cameraPos, cameraRight);
 }
 
+/**
+* Sets Camera to a position
+*/
 function setCameraPos(toPos) {
   cameraPos = vec3.clone(toPos);
   updateCameraVectors();
 }
 
+/**
+* Set the camera to toPos and look at lookAt
+* Rightvec, yaw and pitch are updated accordingly
+*/
 function setCameraPosAndLookAt(toPos, lookAt) {
   setCameraPos(toPos);
   vec3.sub(cameraFront, lookAt, toPos);
@@ -987,6 +1073,11 @@ function setCameraPosAndLookAt(toPos, lookAt) {
   updateLookAtVector(lookAt);
 }
 
+/**
+* Calculates the yaw and pitch of the current orientation of the camera
+* Looking direction wouldn't be correct withouth this function if the autoPilot
+* was disabled
+*/
 function recalculateYawAndPitch() {
   var yawAngle = vec3.angle(vec3.fromValues(cameraFront[0], 0, cameraFront[2]), yawNeutral) * 180 / Math.PI;
   var pitchAngle = vec3.angle(vec3.fromValues(cameraFront[0], cameraFront[1], 0), upvector) * 180 / Math.PI;
@@ -997,6 +1088,9 @@ function recalculateYawAndPitch() {
   pitch = 90 - pitchAngle;
 }
 
+/**
+* Update the lookat vector
+*/
 function updateLookAtVector(toLookAt) {
-  lookatVec = toLookAt;
+  lookatVec = vec3.clone(toLookAt);
 }
