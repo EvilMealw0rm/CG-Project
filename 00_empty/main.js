@@ -199,10 +199,10 @@ function createSceneGraph(gl,resources){
   light.diffuse = [1,1,1,1];
   light.specular = [1,1,1,1];
   light.position = [0,3,2];
-  light.append(createLightSphere(3, resources))
+  light.append(createLightSphere(0.2, resources))
 
   rotateLight = new TransformationSGNode(mat4.create());
-  let translateLight = new TransformationSGNode(glm.translate(0,15,80));
+  let translateLight = new TransformationSGNode(glm.translate(0,10,80));
 
   rotateLight.append(translateLight);
   translateLight.append(light);
@@ -473,7 +473,8 @@ function render(timeInMilliseconds) {
 
 function setAnimationParameters(timeInMilliseconds, deltaTime) {
 
-  rotateLight.matrix = glm.transform({rotateY: timeInMilliseconds * 0.01});
+  // rotate like a flat earth sun (but in reality the earth is a geoid)
+  rotateLight.matrix = glm.transform({rotateY: timeInMilliseconds * 0.025});
 
   if (!animationRunning) {
     return;
