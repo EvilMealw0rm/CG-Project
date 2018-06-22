@@ -255,8 +255,16 @@ function createSceneGraph(gl,resources){
   let robotTextureNode = new AdvancedTextureSGNode(resources.roboter_texture);
   grass.append(robotTextureNode);
 
-  createRobot(robotTextureNode, resources);
+  let stone = new MaterialSGNode(new TransformationSGNode(glm.transform({translate: [5,-1,3], scale:2}),
+    new RenderSGNode(makeSphere(0.4,4,4,))))
+  //ruby
+  stone.ambient = [0.1745,	0.01175,	0.01175,	1];
+  stone.diffuse = [0.61424,	0.04136,	0.04136, 1];
+  stone.specular = [0.727811,	0.626959,	0.626959, 1];
+  stone.shininess = 0.6;
+  root.append(stone);
 
+  createRobot(robotTextureNode, resources);
   return root;
 }
 
@@ -393,10 +401,10 @@ function createHouse(phongroot, rootNode, resources){
     new RenderSGNode(makeRect(1.5,1.5)));
   house.append(frontwall5);
 
-  door = new TransformationSGNode({translate: [4,-1.5,-10]},
+  door =  new TransformationSGNode({translate: [4,-1.5,-10]},
     new AdvancedTextureSGNode(resources.door_texture,
     new RenderSGNode(makeAdvancedRectangle(4,4,8.5))));
-  rootNode.append(door);
+  house .append(door);
 
   let glass = new AlphaNode(new TransformationSGNode(glm.transform({translate: [-5,5.5,-10]}),
     new RenderSGNode(makeRect(2,1.5))))
@@ -739,12 +747,12 @@ class AlphaNode extends MaterialSGNode{
   }
 
   render(context){
-    super.render(context);
     const gl = context.gl,
       shader = context.shader;
     gl.uniform1f(gl.getUniformLocation(shader, 'u_alpha'),0.6);
     gl.uniform1i(gl.getUniformLocation(shader, 'u_enableBlending'), 1);
-
+    super.render(context);
+    gl.uniform1i(gl.getUniformLocation(shader, 'u_enableBlending'), 0);
   }
 }
 
