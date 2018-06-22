@@ -63,11 +63,7 @@ var farClipPlane = 500;
 var skyBoxRadius = 250;
 
 // POI
-<<<<<<< HEAD
-var startPoint = vec3.clone(cameraPos);
-=======
 var startPoint = vec3.fromValues(2, 0, -20);
->>>>>>> f63fe14e46926b8d61afb1ef832738a06a584eee
 var checkPoint1 = vec3.fromValues(1, 0, 36);
 var checkPoint2 = vec3.fromValues(20, 0, 95);
 
