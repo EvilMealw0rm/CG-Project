@@ -67,7 +67,7 @@ var startPoint = vec3.fromValues(2, 0, -20);
 var checkPoint1 = vec3.fromValues(1, 0, 36);
 var checkPoint2 = vec3.fromValues(20, 0, 95);
 
-var cameraStartpoint = vec3.fromValues(-15, 10, 5);
+var cameraStartpoint = vec3.fromValues(-18, 12, 5);
 var cameraCheckpoint1 = vec3.fromValues(-20, 5, 25);
 var cameraCheckpoint2 = vec3.fromValues(55, 10, 85);
 var cameraCheckpoint3 = vec3.fromValues(0, 0, 0);
@@ -78,13 +78,13 @@ var rotationCheck1toCheck2 = 180 / Math.PI * vec3.angle(
 
 // robot variables
 var robotMoving = true;
-var robotMovement = vec3.fromValues(0, 0, 0);
+var robotMovement = vec3.clone(startPoint);
 var legUp = true;
 var robotRotationX = 0;
 var robotRotationY = 0;
 var roboJumpPoint0 = checkPoint2;
 // TODO: correct jumping direction if final locations have been set
-var roboJumpPoint1 = vec3.add(vec3.create(), roboJumpPoint0, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * 3, 2, Math.sin(rotationCheck1toCheck2) * -3));
+var roboJumpPoint1 = vec3.add(vec3.create(), roboJumpPoint0, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * 3, 3, Math.sin(rotationCheck1toCheck2) * -3));
 var roboJumpPoint2 = vec3.sub(vec3.create(), roboJumpPoint1, vec3.fromValues(Math.sin(rotationCheck1toCheck2) * -3, 10, Math.sin(rotationCheck1toCheck2) * 3));
 var robotTransformationNode;
 var headTransformationNode;
@@ -500,13 +500,13 @@ function setAnimationParameters(timeInMilliseconds, deltaTime) {
   var timeInSeconds = timeInMilliseconds / 1000;
   var stepSize = 0;
 
-  //door movement
-  doorRotationZ = calculateRotation(timeInMilliseconds, doorRotationZ,0,100, sceneOne, sceneOne+2000)
-
-
   // Robot movement
-  if (timeInMilliseconds < sceneOne) {
-    robotMovement = move3DVector(timeInMilliseconds, robotMovement, startPoint, checkPoint1, 0, sceneOne);
+  if (timeInMilliseconds < 2000) {
+    //door movement
+    doorRotationZ = calculateRotation(timeInMilliseconds, doorRotationZ, 90, 350, 0, 2000);
+  } else if (timeInMilliseconds >= 2000 && timeInMilliseconds < sceneOne) {
+    robotMovement = move3DVector(timeInMilliseconds, robotMovement, startPoint, checkPoint1, 2000, sceneOne);
+
   } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo - 7000) {
     robotMoving = false;
 
@@ -515,8 +515,8 @@ function setAnimationParameters(timeInMilliseconds, deltaTime) {
   } else if (timeInMilliseconds >= sceneOne + 3000 && timeInMilliseconds < sceneTwo) {
     robotMoving = false;
     boatMovement = move3DVector(timeInMilliseconds, boatMovement,
-      [checkPoint1[0], checkPoint1[1] - 1.5, checkPoint1[2]],
-      [checkPoint2[0], checkPoint2[1] - 1.5, checkPoint2[2]],
+      [checkPoint1[0], checkPoint1[1] - 1.25, checkPoint1[2]],
+      [checkPoint2[0], checkPoint2[1] - 1.25, checkPoint2[2]],
       sceneOne + 3000, sceneTwo);
     robotMovement = move3DVector(timeInMilliseconds, robotMovement, checkPoint1,
       checkPoint2, sceneOne + 3000, sceneTwo);
@@ -532,12 +532,19 @@ function setAnimationParameters(timeInMilliseconds, deltaTime) {
   }
 
   // Camera flight
-  if (timeInMilliseconds < sceneOne) {
-    animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, startPoint, checkPoint1, 0, sceneOne);
-    animationPos = move3DVector(timeInMilliseconds, animationPos, cameraStartpoint, cameraCheckpoint1, 0, sceneOne);
-  } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo) {
-    animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, checkPoint1, checkPoint2, sceneOne, sceneTwo);
-    animationPos = move3DVector(timeInMilliseconds, animationPos, cameraCheckpoint1, cameraCheckpoint2, sceneOne, sceneTwo);
+  if (timeInMilliseconds < 2000) {
+    // wait for door to open
+    animationLookAt = vec3.clone(startPoint);
+    animationPos = vec3.clone(cameraStartpoint);
+  } else if (timeInMilliseconds >= 2000 && timeInMilliseconds < sceneOne) {
+    animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, startPoint, checkPoint1, 2000, sceneOne);
+    animationPos = move3DVector(timeInMilliseconds, animationPos, cameraStartpoint, cameraCheckpoint1, 2000, sceneOne);
+  } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo - 7000) {
+    animationLookAt = vec3.clone(checkPoint1);
+    animationPos = vec3.clone(cameraCheckpoint1);
+  } else if (timeInMilliseconds >= sceneOne + 3000 && timeInMilliseconds < sceneTwo) {
+    animationLookAt = move3DVector(timeInMilliseconds, animationLookAt, checkPoint1, checkPoint2, sceneOne + 3000, sceneTwo);
+    animationPos = move3DVector(timeInMilliseconds, animationPos, cameraCheckpoint1, cameraCheckpoint2, sceneOne + 3000, sceneTwo);
   } else if (timeInMilliseconds >= sceneTwo + 5000 && timeInMilliseconds < movieEnd) {
 
   }
