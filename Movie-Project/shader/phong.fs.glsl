@@ -64,6 +64,7 @@ void main() {
 	vec4 color = calculateSimplePointLight(u_light, u_material, v_lightVec,
 																						v_normalVec, v_eyeVec);
 	gl_FragColor = color;
+	//applies alpha value in addition to the color
 	if(u_enableBlending){
 		gl_FragColor = vec4(color.rgb,u_alpha);
 	}

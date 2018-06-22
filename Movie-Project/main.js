@@ -117,9 +117,6 @@ var doorRotationY = 0;
 //textures
 var floorTexture;
 
-//scenegraph nodes
-var root = null;
-
 /**
 * load the shaders, textures and models using a utility function
 */
@@ -194,7 +191,7 @@ function createSceneGraph(gl,resources){
   const grass = new ShaderSGNode(createProgram(gl, resources.vs, resources.fs));
   root.append(grass);
     let floor = new AdvancedTextureSGNode(resources.floortexture,
-                new RenderSGNode(makeFloor())
+                new RenderSGNode(makeRect(10,10))
               );
 
   grass.append(new TransformationSGNode(glm.transform({
@@ -204,7 +201,7 @@ function createSceneGraph(gl,resources){
   }), [floor]));
 
   let water = new AdvancedTextureSGNode(resources.water_texture,
-              new RenderSGNode(makeFloor()))
+              new RenderSGNode(makeRect(10,10)))
   grass.append(new TransformationSGNode(glm.transform({
     translate: [0,-1.5,80],
     rotateX: -90,
@@ -239,12 +236,12 @@ function createSceneGraph(gl,resources){
                   new TransformationSGNode(glm.transform({
                     translate: [waterfallPos[0], waterfallPos[1], waterfallPos[2]],
                     scale: [1,1,0.5]
-                  }), new RenderSGNode(makeFloor())));
+                  }), new RenderSGNode(makeRect(10,10)));
   animatedTexture.append(waterfall);
 
   createHouse(root, grass, resources);
 
-  waterParticleNode = new TextureSGNode(resources.water_particle);
+  waterParticleNode = new AdvancedTextureSGNode(resources.water_particle);
   let waterfallShaderNode =new ShaderSGNode(createProgram(gl, resources.vs_particle, resources.fs_particle));
   root.append(waterfallShaderNode);
   waterfallShaderNode.append(new TransformationSGNode(glm.transform({
@@ -431,7 +428,6 @@ function render(timeInMilliseconds) {
   //clear the buffer
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  gl.enable(gl.DEPTH_TEST);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.useProgram(root.program);
@@ -656,12 +652,6 @@ function convertDegreeToRadians(degree) {
   return degree * Math.PI / 180
 }
 
-function makeFloor() {
-  var floor = makeRect(10, 10);
-  floor.texture = [0, 0,   1, 0,   1, 1,   0, 1];
-  return floor;
-}
-
 class LightNode extends TransformationSGNode {
 
   constructor(position, children) {
@@ -740,7 +730,9 @@ class EnvironmentSGNode extends SGNode {
   }
 }
 
-
+/**
+*A class which extends the MaterialSGNode class by adding alpha blending
+*/
 class AlphaNode extends MaterialSGNode{
   constructor(children){
     super(children);
@@ -754,53 +746,6 @@ class AlphaNode extends MaterialSGNode{
     super.render(context);
     gl.uniform1i(gl.getUniformLocation(shader, 'u_enableBlending'), 0);
   }
-}
-
-class MaterialNode extends SGNode {
-
-  constructor(children) {
-    super(children);
-    this.ambient = [0.2, 0.2, 0.2, 1.0];
-    this.diffuse = [0.8, 0.8, 0.8, 1.0];
-    this.specular = [0, 0, 0, 1];
-    this.emission = [0, 0, 0, 1];
-    this.shininess = 0.0;
-    this.uniform = 'u_material';
-  }
-
-  setMaterialUniforms(context) {
-    const gl = context.gl,
-      shader = context.shader;
-
-    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.ambient'), this.ambient);
-    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.diffuse'), this.diffuse);
-    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.specular'), this.specular);
-    gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.emission'), this.emission);
-    gl.uniform1f(gl.getUniformLocation(shader, this.uniform+'.shininess'), this.shininess);
-  }
-
-  render(context) {
-    this.setMaterialUniforms(context);
-
-    //render children
-    super.render(context);
-  }
-}
-
-/**
-* A scenegraph node for setting texture parameters
-*/
-class TextureSGNode extends AdvancedTextureSGNode {
-  constructor(image, children) {
-        super(image, children);
-    }
-    render(context) {
-        gl.uniform1i(gl.getUniformLocation(context.shader, 'u_enableTexturing'), 1);
-
-        super.render(context);
-
-        gl.uniform1i(gl.getUniformLocation(context.shader, 'u_enableTexturing'), 0);
-    }
 }
 
 /**
@@ -870,7 +815,6 @@ function createWaterfall(timeInMilliseconds) {
 function createParticles(timeInMilliseconds) {
   if (particleNodes.length < maxParticles) {
     // create the particle
-    // TODO: adjust parameters accordingly to the final "waterfall"
     let particle = new ParticleNode(makeSphere(0.02, 50, 50), timeInMilliseconds, [Math.random() * 8, Math.random() / 3, 0], [Math.random() / 2, Math.random(), Math.random() / 2], 0.0005);
     // append the particle into the particle list
     particles.push(particle);
