@@ -1,4 +1,4 @@
-//need to specify how "precise" float should be
+
 precision mediump float;
 
 varying vec3 v_normalVec;

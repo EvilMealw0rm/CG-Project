@@ -1299,23 +1299,6 @@ class LightSGNode extends TransformationSGNode {
     super.render(context);
   }
 }
-/**
-* A pot light node to represent a spot light
-*/
-class SpotLightNode extends LightSGNode {
-  constructor(position, direction, limit, children) {
-    super(position, children);
-    this.direction = direction;
-    this.limit = limt;
-  }
-
-  render(context) {
-    // set SetUniformSGNode
-    gl.uniform3fv(gl.getUniformLocation(context.shader, this.uniform + '.direction'), this.direction);
-    gl.uniform1f(gl.getUniformLocation(context.shader, this.uniform + '.limit'), this.limit);
-    super.render(context);
-  }
-}
 
 /**
  * returns a new rendering context

@@ -16,7 +16,6 @@ varying vec3 v_normalVec;
 varying vec3 v_eyeVec;
 varying vec3 v_lightVec;
 
-//TASK 1: define output variable for texture coordinates
 varying vec2 v_texCoord;
 
 void main() {
@@ -27,7 +26,6 @@ void main() {
   v_eyeVec = -eyePosition.xyz;
 	v_lightVec = u_lightPos - eyePosition.xyz;
 
-	//TASK 1: pass on texture coordinates to fragment shader
 	v_texCoord = a_texCoord;
 
 	gl_Position = u_projection * eyePosition;

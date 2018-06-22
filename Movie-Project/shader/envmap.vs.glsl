@@ -1,4 +1,4 @@
-//attributes: per vertex inputs in this case the 2d position and its color
+
 attribute vec3 a_position;
 attribute vec3 a_normal;
 

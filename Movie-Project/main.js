@@ -131,8 +131,8 @@ loadResources({
   fs_env: 'shader/envmap.fs.glsl',
   vs_phong: 'shader/phong.vs.glsl',
   fs_phong: 'shader/phong.fs.glsl',
-  vs_single: 'shader/empty.vs.glsl',
-  fs_single: 'shader/empty.fs.glsl',
+  vs_light: 'shader/light.vs.glsl',
+  fs_light: 'shader/light.fs.glsl',
   vs_particle: 'shader/particle.vs.glsl',
   fs_particle: 'shader/particle.fs.glsl',
   water_particle: 'models/water_particle_light.png',
@@ -150,6 +150,7 @@ loadResources({
   roof_texture: 'models/roof_texture.png',
   door_texture: 'models/door_texture.jpg',
   floor_texture: 'models/floor_texture.jpg',
+  roboter_texture: 'models/metal.jpg',
   boat: 'models/OldBoat.obj'
 }).then(function (resources /*an object containing our keys with the loaded resources*/) {
   init(resources);
@@ -258,7 +259,7 @@ function createSceneGraph(gl,resources){
 }
 
 function createLightSphere(radius, resources) {
-  return new ShaderSGNode(createProgram(gl, resources.vs_single, resources.fs_single), [
+  return new ShaderSGNode(createProgram(gl, resources.vs_light, resources.fs_light), [
     new RenderSGNode(makeSphere(radius,10,10))
   ]);
 }
@@ -276,18 +277,16 @@ function initCubeMap(resources) {
   //set sampling parameters
   gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
   gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
-  //gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_R, gl.MIRRORED_REPEAT); //will be available in WebGL 2
   gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   //set correct image for each side of the cube map
-  //gl.pixelStorei(gl.UNPACK_FLIP_Z_WEBGL, true);//flipping required for our skybox, otherwise images don't fit together
   gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_pos_x);
   gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_neg_x);
   gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_pos_y);
   gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_neg_y);
   gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_pos_z);
   gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, resources.env_neg_z);
-  //generate mipmaps (optional)
+  //generate mipmaps
   gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
   //unbind the texture again
   gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
@@ -304,14 +303,14 @@ function createRobot(rootNode, resources) {
   cubeNode.shininess = 0.4;
 
   pyramidNode = new MaterialNode([new RenderSGNode(makePyramid())]);
-  //turquoise
+  // turquoise
   pyramidNode.ambient = [0.1,	0.18725,	0.1745, 1];
   pyramidNode.diffuse = [0.396,	0.74151,	0.69102, 1];
   pyramidNode.specular = [0.297254,	0.30829,	0.306678, 1];
   pyramidNode.shininess = 0.1;
 
   //transformations of whole body
-  bodyNode = new TransformationSGNode(glm.transform({
+  bodyNode =  new TransformationSGNode(glm.transform({
     translate: [0.3,0.8,0]
   }), pyramidNode);
   robotTransformationNode =new TransformationSGNode(mat4.create(),[bodyNode]);
@@ -319,10 +318,10 @@ function createRobot(rootNode, resources) {
 
   //head
   sphereNode = new MaterialNode([new RenderSGNode(makeSphere(.2,10,10))]);
-  sphereNode.ambient = [0.24725, 0.1995, 0.0745, 1];
-  sphereNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
-  sphereNode.specular = [0.628281, 0.555802, 0.366065, 1];
-  sphereNode.shininess = 0.4;
+  sphereNode.ambient = [0.1,	0.18725,	0.1745, 1];
+  sphereNode.diffuse = [0.396,	0.74151,	0.69102, 1];
+  sphereNode.specular = [0.297254,	0.30829,	0.306678, 1];
+  sphereNode.shininess = 0.1;
   headTransformationNode = (new TransformationSGNode(glm.transform({
     translate: [0.3, 2.2, 0],
     scale: [2, 2, 2]
@@ -491,7 +490,7 @@ function setAnimationParameters(timeInMilliseconds) {
   // Robot movement
   if (timeInMilliseconds < doorOpeningTime) {
     //door movement
-    doorRotationY = calculateRotation(timeInMilliseconds, doorRotationY, 90, 350, 0, doorOpeningTime);
+    doorRotationY = calculateRotation(timeInMilliseconds, doorRotationY, 120, 350, 0, doorOpeningTime);
   } else if (timeInMilliseconds >= doorOpeningTime && timeInMilliseconds < sceneOne) {
     // roboter walks to boat
     robotMoving = true;
@@ -692,7 +691,6 @@ class LightNode extends TransformationSGNode {
       shader = context.shader,
       position = this.computeLightPosition(context);
 
-    //TASK 3-5 set uniforms
 	  gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.ambient'), this.ambient);
     gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.diffuse'), this.diffuse);
     gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.specular'), this.specular);
@@ -776,9 +774,6 @@ class MaterialNode extends SGNode {
     const gl = context.gl,
       shader = context.shader;
 
-    //TASK 2-3 set uniforms
-    //hint setting a structure element using the dot notation, e.g. u_material.ambient
-    //setting a uniform: gl.uniform UNIFORM TYPE (gl.getUniformLocation(shader, UNIFORM NAME), VALUE);
     gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.ambient'), this.ambient);
     gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.diffuse'), this.diffuse);
     gl.uniform4fv(gl.getUniformLocation(shader, this.uniform+'.specular'), this.specular);

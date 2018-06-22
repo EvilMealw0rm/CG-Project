@@ -44,7 +44,6 @@ vec4 calculateSimplePointLight(Light light, Material material, vec3 lightVec,
 	normalVec = normalize(normalVec);
 	eyeVec = normalize(eyeVec);
 
-	//TASK 1-1 implement phong shader
 	//compute diffuse term
 	float diffuse = max(dot(normalVec, lightVec), 0.0);
 
