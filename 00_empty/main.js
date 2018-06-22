@@ -62,7 +62,7 @@ var farClipPlane = 500;
 var skyBoxRadius = 250;
 
 // POI
-var startPoint = vec3.clone(cameraPos);
+var startPoint = vec3.fromValues(2, 0, -15);
 var checkPoint1 = vec3.fromValues(1, 0, 36);
 var checkPoint2 = vec3.fromValues(20, 0, 95);
 
@@ -77,7 +77,7 @@ var rotationCheck1toCheck2 = 180 / Math.PI * vec3.angle(
 
 // robot variables
 var robotMoving = true;
-var robotMovement = vec3.fromValues(0, 0, 0);
+var robotMovement = vec3.clone(startPoint);
 var legUp = true;
 var robotRotationX = 0;
 var robotRotationY = 0;
@@ -454,8 +454,8 @@ function setAnimationParameters(timeInMilliseconds, deltaTime) {
   var stepSize = 0;
 
   // Robot movement
-  if (timeInMilliseconds < sceneOne) {
-    robotMovement = move3DVector(timeInMilliseconds, robotMovement, startPoint, checkPoint1, 0, sceneOne);
+  if (timeInMilliseconds >= 2000 && timeInMilliseconds < sceneOne) {
+    robotMovement = move3DVector(timeInMilliseconds, robotMovement, startPoint, checkPoint1, 2000, sceneOne);
   } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo - 7000) {
     robotMoving = false;
 
