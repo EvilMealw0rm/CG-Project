@@ -12,12 +12,13 @@ var cameraUp = vec3.fromValues(0, 1, 0);
 var cameraRight = vec3.fromValues(0, 0, 0);
 var pitch = 0;
 var yaw = -90;
-var speed = 0.2;
 var sensitivity = 0.05;
 
 var yawNeutral = vec3.clone(cameraFront);
 
 var lookatVec = vec3.fromValues(0, 0, 0);
+
+var rotateLight;
 
 var deltaTime = 0;
 var prevTime = 0;
@@ -62,7 +63,11 @@ var farClipPlane = 500;
 var skyBoxRadius = 250;
 
 // POI
+<<<<<<< HEAD
 var startPoint = vec3.clone(cameraPos);
+=======
+var startPoint = vec3.fromValues(2, 0, -20);
+>>>>>>> f63fe14e46926b8d61afb1ef832738a06a584eee
 var checkPoint1 = vec3.fromValues(1, 0, 36);
 var checkPoint2 = vec3.fromValues(20, 0, 95);
 
@@ -183,28 +188,38 @@ function createSceneGraph(gl,resources){
                 new RenderSGNode(makeFloor())
               );
 
-  grass.append(new TransformationSGNode(glm.transform({ translate: [0,-1.5,0], rotateX: -90, scale: [5,3,3]}), [
-    floor
-  ]));
+  grass.append(new TransformationSGNode(glm.transform({
+    translate: [0,-1.5,0],
+    rotateX: -90,
+    scale: [5,3,3]
+  }), [floor]));
 
   let water = new AdvancedTextureSGNode(resources.water_texture,
               new RenderSGNode(makeFloor()))
-  grass.append(new TransformationSGNode(glm.transform({translate: [0,-1.5,80], rotateX: -90, scale: [5,5,7]}),
-      [water]));
+  grass.append(new TransformationSGNode(glm.transform({
+    translate: [0,-1.5,80],
+    rotateX: -90,
+    scale: [5,5,7]
+  }), [water]));
 
   let light = new LightNode();
   light.ambient = [0,0,0,1];
   light.diffuse = [1,1,1,1];
   light.specular = [1,1,1,1];
   light.position = [0,3,2];
-  light.append(createLightSphere(0.2, resources))
-  root.append(light);
+  light.append(createLightSphere(3, resources))
 
-  boatTransformatioNode = new TransformationSGNode(
-    glm.transform({
-      translate: [boatMovement[0], boatMovement[1], boatMovement[2]],
-      scale: [0.3,0.3,0.3]
-      }), new RenderSGNode(resources.boat));
+  rotateLight = new TransformationSGNode(mat4.create());
+  let translateLight = new TransformationSGNode(glm.translate(0,15,80));
+
+  rotateLight.append(translateLight);
+  translateLight.append(light);
+  root.append(rotateLight);
+
+  boatTransformatioNode = new TransformationSGNode(glm.transform({
+    translate: [boatMovement[0], boatMovement[1], boatMovement[2]],
+    scale: [0.3,0.3,0.3]
+    }), new RenderSGNode(resources.boat));
   let boat = new AdvancedTextureSGNode(resources.boat_texture, boatTransformatioNode);
   grass.append(boat);
 
@@ -212,8 +227,10 @@ function createSceneGraph(gl,resources){
   root.append(animatedTexture);
 
   let waterfall = new AnimatedTextureSGNode(resources.water_texture,
-                  new TransformationSGNode(glm.transform({translate: [waterfallPos[0], waterfallPos[1], waterfallPos[2]], scale: [0.3,0.5,0.5]}),
-                  new RenderSGNode(makeFloor())));
+                  new TransformationSGNode(glm.transform({
+                    translate: [waterfallPos[0], waterfallPos[1], waterfallPos[2]],
+                    scale: [1,1,0.5]
+                  }), new RenderSGNode(makeFloor())));
   animatedTexture.append(waterfall);
 
   createHouse(root, grass, resources);
@@ -221,8 +238,10 @@ function createSceneGraph(gl,resources){
   waterParticleNode = new TextureSGNode(resources.water_particle);
   let waterfallShaderNode =new ShaderSGNode(createProgram(gl, resources.vs_particle, resources.fs_particle));
   root.append(waterfallShaderNode);
-  waterfallShaderNode.append(new TransformationSGNode(glm.transform({translate: [waterfallPos[0] - 4, waterfallPos[1] - 4.5, waterfallPos[2]], scale: 2.5}),
-           waterParticleNode));
+  waterfallShaderNode.append(new TransformationSGNode(glm.transform({
+    translate: [waterfallPos[0] - 10, waterfallPos[1] - 4.5, waterfallPos[2]],
+    scale: 2.5
+    }), waterParticleNode));
 
   createRobot(root, resources);
 
@@ -309,7 +328,9 @@ function createRobot(rootNode, resources) {
   pyramidNode.shininess = 0.1;
 
   //transformations of whole body
-  bodyNode = new TransformationSGNode(glm.transform({translate: [0.3,0.8,0]}),pyramidNode);
+  bodyNode = new TransformationSGNode(glm.transform({
+    translate: [0.3,0.8,0]
+  }), pyramidNode);
   robotTransformationNode =new TransformationSGNode(mat4.create(),[bodyNode]);
   rootNode.append(robotTransformationNode);
 
@@ -319,33 +340,47 @@ function createRobot(rootNode, resources) {
   sphereNode.diffuse = [0.75164, 0.60648, 0.22648, 1];
   sphereNode.specular = [0.628281, 0.555802, 0.366065, 1];
   sphereNode.shininess = 0.4;
-  headTransformationNode = (new TransformationSGNode(glm.transform({translate: [0.3, 2.2, 0], scale: [2, 2, 2]}),sphereNode));
+  headTransformationNode = (new TransformationSGNode(glm.transform({
+    translate: [0.3, 2.2, 0],
+    scale: [2, 2, 2]
+  }),sphereNode));
 
   robotTransformationNode.append(headTransformationNode);
 
   //left leg
-  leftLegTransformationNode = new TransformationSGNode(glm.transform({translate: [0.5,-0.5,0], scale: [0.1,1,0.1]}),cubeNode);
+  leftLegTransformationNode = new TransformationSGNode(glm.transform({
+    translate: [0.5,-0.5,0],
+    scale: [0.1,1,0.1]
+  }),cubeNode);
   robotTransformationNode.append(leftLegTransformationNode, cubeNode);
 
   //right leg
-  rightLegtTransformationNode = new TransformationSGNode(glm.transform({translate: [0,-0.5,0], scale: [0.1,1,0.1]}),cubeNode);
+  rightLegtTransformationNode = new TransformationSGNode(glm.transform({
+    translate: [0,-0.5,0],
+    scale: [0.1,1,0.1]
+  }),cubeNode);
   robotTransformationNode.append(rightLegtTransformationNode);
 
   // right arm
-  rightArmTransformationNode = new TransformationSGNode(glm.transform({translate: [1,1.5,0], scale: [0.6,0.1,0.1]}),cubeNode);
+  rightArmTransformationNode = new TransformationSGNode(glm.transform({
+    translate: [1,1.5,0],
+    scale: [0.6,0.1,0.1]
+  }),cubeNode);
   robotTransformationNode.append(rightArmTransformationNode);
 
   //left arm
-  leftArmTransformationNode = new TransformationSGNode(glm.transform({translate: [-0.4,1.5,0], scale: [0.6,0.1,0.1]}),cubeNode);
+  leftArmTransformationNode = new TransformationSGNode(glm.transform({
+    translate: [-0.4,1.5,0],
+    scale: [0.6,0.1,0.1]
+  }),cubeNode);
   robotTransformationNode.append(leftArmTransformationNode);
-
 }
 
 function createHouse(phongroot, rootNode, resources){
   let house =new AdvancedTextureSGNode(resources.brick_texture);
   rootNode.append(house);
 
-  let backwall =  new TransformationSGNode(glm.transform({translate: [0,5,-30] }),
+  let backwall =  new TransformationSGNode(glm.transform({translate: [0,5,-30]}),
     new RenderSGNode(makeRect(10,10)));
   house.append(backwall)
 
@@ -453,6 +488,8 @@ function render(timeInMilliseconds) {
 }
 
 function setAnimationParameters(timeInMilliseconds, deltaTime) {
+
+  rotateLight.matrix = glm.transform({rotateY: timeInMilliseconds * 0.01});
 
   if (!animationRunning) {
     return;
@@ -773,7 +810,7 @@ function createParticles(timeInMilliseconds) {
   if (particleNodes.length < maxParticles) {
     // create the particle
     // TODO: adjust parameters accordingly to the final "waterfall"
-    let particle = new ParticleNode(makeSphere(0.02, 50, 50), timeInMilliseconds, [Math.random() * 3, Math.random() / 3, 0], [Math.random() / 2, Math.random(), Math.random() / 2], 0.0005);
+    let particle = new ParticleNode(makeSphere(0.02, 50, 50), timeInMilliseconds, [Math.random() * 8, Math.random() / 3, 0], [Math.random() / 2, Math.random(), Math.random() / 2], 0.0005);
     // append the particle into the particle list
     particles.push(particle);
     var dummy = new TransformationSGNode(mat4.create(), particle);
