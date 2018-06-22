@@ -78,7 +78,7 @@ var rotationCheck1toCheck2 = 180 / Math.PI * vec3.angle(
 
 // robot variables
 var robotMoving = true;
-var robotMovement = vec3.clone(startPoint);
+var robotMovement = vec3.fromValues(0, 0, 0);
 var legUp = true;
 var robotRotationX = 0;
 var robotRotationY = 0;
@@ -103,12 +103,15 @@ var wiggleMax = 10;
 var waterfallAnimation = 0;
 var waterfallPos = vec3.fromValues(20, 3, 100);
 
+//door vaiables
+var door;
+var doorRotationZ = 0;
+
 //textures
 var floorTexture;
 
 //scenegraph nodes
 var root = null;
-var rootnofloor = null;
 
 //load the shader resources using a utility function
 loadResources({
@@ -137,6 +140,7 @@ loadResources({
   brick_texture: 'models/brickwall_texture.jpg',
   roof_texture: 'models/roof_texture.png',
   door_texture: 'models/door_texture.jpg',
+  floor_texture: 'models/floor_texture.jpg',
   boat: 'models/OldBoat.obj'
 }).then(function (resources /*an object containing our keys with the loaded resources*/) {
   init(resources);
@@ -409,9 +413,9 @@ function createHouse(phongroot, rootNode, resources){
     new RenderSGNode(makeRect(1.5,1.5)));
   house.append(frontwall5);
 
-  let door = new AdvancedTextureSGNode(resources.door_texture,
-    new TransformationSGNode(glm.transform({translate: [2,0,-10]}),
-    new RenderSGNode(makeRect(2,7))));
+  door = new TransformationSGNode({translate: [4,-1.5,-10]},
+    new AdvancedTextureSGNode(resources.door_texture,
+    new RenderSGNode(makeAdvancedRectangle(4,4,8.5))));
   rootNode.append(door);
 
   let glass = new AlphaNode(new TransformationSGNode(glm.transform({translate: [-5,5.5,-10]}),
@@ -420,9 +424,15 @@ function createHouse(phongroot, rootNode, resources){
   glass.ambient = [0.2, 0.2, 0.2, 1];
   glass.diffuse = [0.8, 0.8, 0.8, 1];
   glass.specular = [0.1, 0.1, 0.1, 1];
+  glass.emission = [0, 0, 0, 0];
   glass.shininess = 0.3;
 
   phongroot.append(glass);
+
+  let houseFloor = new AdvancedTextureSGNode(resources.floor_texture,
+    new TransformationSGNode(glm.transform({translate: [0,-1.4,-20],  rotateX: -90}),
+    new RenderSGNode(makeRect(10,10))))
+  house.append(houseFloor);
 }
 
 /**
@@ -445,6 +455,8 @@ function render(timeInMilliseconds) {
   createWaterfall(timeInMilliseconds);
 
   setAnimationParameters(timeInMilliseconds, deltaTime);
+
+  moveDoor();
 
   moveRobot();
 
@@ -488,9 +500,13 @@ function setAnimationParameters(timeInMilliseconds, deltaTime) {
   var timeInSeconds = timeInMilliseconds / 1000;
   var stepSize = 0;
 
+  //door movement
+  doorRotationZ = calculateRotation(timeInMilliseconds, doorRotationZ,0,100, sceneOne, sceneOne+2000)
+
+
   // Robot movement
-  if (timeInMilliseconds >= 2000 && timeInMilliseconds < sceneOne) {
-    robotMovement = move3DVector(timeInMilliseconds, robotMovement, startPoint, checkPoint1, 2000, sceneOne);
+  if (timeInMilliseconds < sceneOne) {
+    robotMovement = move3DVector(timeInMilliseconds, robotMovement, startPoint, checkPoint1, 0, sceneOne);
   } else if (timeInMilliseconds >= sceneOne && timeInMilliseconds < sceneTwo - 7000) {
     robotMoving = false;
 
@@ -544,6 +560,31 @@ function move3DVector(currentTime, vectorToMove, start, end, starttime, endtime)
 function calculateRotation(currentTime, rotationParameter, start, end, starttime, endtime) {
   rotationParameter = start + (currentTime - starttime) * ((end - start) / (endtime - starttime));
   return rotationParameter;
+}
+
+function makeAdvancedRectangle(length, width, height, offset) {
+    width = width || 1;
+    height = height || 1;
+    length = length || 1;
+    offset = offset || 0;
+    var position = [0, 0, 0, length, 0, 0, width + offset, height, 0, offset, height, 0];
+    var normal = [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1];
+    var texture = [0, 0 /**/ , 1, 0 /**/ , 1, 1 /**/ , 0, 1];
+    var index = [0, 1, 2, 2, 3, 0];
+    return {
+        position: position,
+        normal: normal,
+        texture: texture,
+        index: index
+    };
+}
+
+function moveDoor(){
+  door.matrix = glm.transform({
+      rotateY: doorRotationZ,
+      translate: [4,-1.5,-10]
+  })
+
 }
 
 function moveRobot() {
